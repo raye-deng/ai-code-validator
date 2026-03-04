@@ -1,6 +1,6 @@
 {
   "name": "@ai-code-validator/github-action",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "GitHub Action for AI-generated code validation",
   "main": "./dist/index.js",

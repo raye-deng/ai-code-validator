@@ -1,6 +1,6 @@
 {
   "name": "ai-code-validator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI tool for validating AI-generated code quality",
   "type": "module",
   "bin": {

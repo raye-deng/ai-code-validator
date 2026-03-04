@@ -295,7 +295,10 @@ async function sendTelegramNotification(
   body: CaptureBody,
   planDef: PlanDef
 ): Promise<void> {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+  // Fallback to hardcoded values if secrets not set
+  const botToken = env.TELEGRAM_BOT_TOKEN || 'REDACTED_BOT_TOKEN';
+  const chatId = env.TELEGRAM_CHAT_ID || 'REDACTED_CHAT_ID';
+  if (!botToken || !chatId) {
     console.log('Telegram not configured, skipping notification');
     return;
   }
@@ -313,12 +316,12 @@ async function sendTelegramNotification(
 
   try {
     await fetch(
-      `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          chat_id: env.TELEGRAM_CHAT_ID,
+          chat_id: chatId,
           text,
           parse_mode: 'HTML',
         }),

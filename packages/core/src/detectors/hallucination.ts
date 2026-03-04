@@ -77,6 +77,23 @@ function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<st
         for (const name of Object.keys(deps)) {
           packages.add(name);
         }
+        // In monorepo: also read root workspace package.json (one or two levels up)
+        const isWorkspacePkg = pkg.name && (dir.includes('/packages/') || dir.includes('/apps/'));
+        if (isWorkspacePkg) {
+          for (let up = dirname(dir); up !== dirname(up); up = dirname(up)) {
+            const rootPkg = join(up, 'package.json');
+            if (existsSync(rootPkg)) {
+              try {
+                const root = JSON.parse(readFileSync(rootPkg, 'utf-8'));
+                if (root.workspaces) {
+                  const rootDeps = { ...root.dependencies, ...root.devDependencies, ...root.peerDependencies };
+                  for (const n of Object.keys(rootDeps)) packages.add(n);
+                  break;
+                }
+              } catch { /* ignore */ }
+            }
+          }
+        }
       } catch {
         // Ignore malformed package.json
       }
@@ -178,6 +195,16 @@ function detectPhantomReferences(
     'performance', 'queueMicrotask', 'atob', 'btoa',
     'describe', 'it', 'test', 'expect', 'beforeAll', 'afterAll', 'beforeEach', 'afterEach',
     'vi', 'jest',
+    // Class keywords that appear as identifiers
+    'constructor', 'super', 'this',
+    // Common logging / utility patterns
+    'log', 'warn', 'error', 'info', 'debug', 'trace',
+    // SQL aggregate functions (appear in TypeORM/raw queries)
+    'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'COALESCE', 'NULLIF', 'CAST',
+    'count', 'sum', 'avg', 'max', 'min', 'coalesce', 'nullif', 'cast',
+    // Node.js / common runtime
+    'next', 'resolve', 'reject', 'emit', 'on', 'off', 'once',
+    'toString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf',
   ]);
 
   for (const line of lines) {
@@ -236,7 +263,15 @@ function detectPhantomReferences(
       // Skip if preceded by @ (decorator call within a line)
       if (idx > 0 && line[idx - 1] === '@') continue;
       // Skip control flow keywords
-      if (['if', 'for', 'while', 'switch', 'catch', 'return', 'throw', 'new', 'typeof', 'instanceof', 'void', 'delete', 'await'].includes(name)) continue;
+      if (['if', 'for', 'while', 'switch', 'catch', 'return', 'throw', 'new', 'typeof', 'instanceof', 'void', 'delete', 'await', 'yield', 'case', 'in', 'of', 'as', 'from', 'import', 'export', 'default', 'extends', 'implements', 'interface', 'type', 'enum', 'namespace', 'abstract', 'declare', 'readonly', 'static', 'public', 'private', 'protected', 'override', 'get', 'set', 'async', 'function', 'class', 'const', 'let', 'var'].includes(name)) continue;
+      // Skip all-uppercase identifiers (likely enum values, constants, SQL)
+      if (/^[A-Z][A-Z0-9_]+$/.test(name)) continue;
+      // Skip single-char identifiers (loop variables: i, j, k, etc.)
+      if (name.length === 1) continue;
+      // Skip lines that are inside SQL template literals or comments
+      if (trimmedLine.startsWith('//') || trimmedLine.startsWith('*') || trimmedLine.startsWith('/*')) continue;
+      // Skip class method definitions (name followed by ( inside class body)
+      if (/^\s*(public|private|protected|static|async|override|abstract)?\s*\w+\s*\(/.test(line) && !line.includes('=')) continue;
 
       issues.push({
         type: 'phantom-function',

@@ -40,12 +40,16 @@ function extractFunctionBlocks(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const funcMatch = line.match(
-      /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(?)/,
-    );
+    // Match function declarations, arrow functions, and class methods
+    // Exclude: destructuring (const { x } = ...), object literals (const x = {...}), imports
+    const isDestructuring = /(?:const|let|var)\s*\{/.test(line) || /(?:const|let|var)\s*\[/.test(line);
+    const isSimpleAssignment = /(?:const|let|var)\s+\w+\s*=\s*[^(=>]/.test(line) && !/(?:async\s*)?\(/.test(line.split('=').slice(1).join('='));
+    const funcMatch = !isDestructuring && !isSimpleAssignment ? line.match(
+      /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:(?:public|private|protected|static|async|override)\s+)+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\()/,
+    ) : null;
 
     if (funcMatch) {
-      const name = funcMatch[1] || funcMatch[2];
+      const name = funcMatch[1] || funcMatch[2] || funcMatch[3];
       const bodyLines: string[] = [];
       let braceDepth = 0;
       let started = false;

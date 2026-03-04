@@ -1,6 +1,6 @@
 {
   "name": "@ai-code-validator/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Core detection engine for AI-generated code validation",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
