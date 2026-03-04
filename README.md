@@ -1,6 +1,8 @@
 # 🛡️ AI Code Validator
 
 [![CI](https://github.com/raye-deng/ai-code-validator/actions/workflows/ci.yml/badge.svg)](https://github.com/raye-deng/ai-code-validator/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/ai-code-validator.svg)](https://www.npmjs.com/package/ai-code-validator)
+[![npm downloads](https://img.shields.io/npm/dm/ai-code-validator.svg)](https://www.npmjs.com/package/ai-code-validator)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 
