@@ -14,7 +14,7 @@ const PAYPAL_CLIENT_ID =
 // Types
 // ---------------------------------------------------------------------------
 
-type PageState = 'idle' | 'paying' | 'processing' | 'success' | 'error';
+type PageState = 'idle' | 'paying' | 'processing' | 'success' | 'error' | 'waitlist_success';
 
 interface FormData {
   name: string;
@@ -217,6 +217,31 @@ export default function EarlyAccess() {
   }
 
   // -------------------------------------------------------------------------
+  // Waitlist success state
+  // -------------------------------------------------------------------------
+  if (state === 'waitlist_success') {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-6">
+        <div className="max-w-lg text-center">
+          <span className="text-6xl mb-6 block">📋</span>
+          <h1 className="text-4xl font-bold mb-4">You&apos;re on the list!</h1>
+          <p className="text-xl text-gray-400 mb-4">
+            We&apos;ll notify <strong className="text-gray-300">{formData.email}</strong> when AI Code Validator launches.
+          </p>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8 text-left">
+            <h3 className="text-white font-semibold mb-3">While you wait:</h3>
+            <p className="text-gray-400 text-sm mb-3">Try the free CLI right now:</p>
+            <pre className="bg-gray-950 text-green-400 text-sm p-4 rounded-lg font-mono">npx ai-code-validator scan ./src</pre>
+          </div>
+          <a href="/" className="inline-block px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white font-semibold rounded-xl transition">
+            &larr; Back to Home
+          </a>
+        </div>
+      </main>
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Form + payment
   // -------------------------------------------------------------------------
 
@@ -232,6 +257,23 @@ export default function EarlyAccess() {
     if (!formData.name || !formData.email || !formData.ci_platform) return;
     setErrorMsg('');
     setState('paying');
+  };
+
+  const handleWaitlistSubmit = async () => {
+    if (!formData.name || !formData.email || !formData.ci_platform) return;
+    setState('processing');
+    try {
+      const res = await fetch(`${WORKER_URL}/api/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) throw new Error('Failed to join waitlist');
+      setState('waitlist_success');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to join waitlist. Please try again.');
+      setState('error');
+    }
   };
 
   const isFormValid = formData.name && formData.email && formData.ci_platform;
@@ -411,13 +453,23 @@ export default function EarlyAccess() {
 
           {/* Action area */}
           {state === 'idle' && (
-            <button
-              type="submit"
-              disabled={!isFormValid}
-              className="w-full py-4 bg-primary-600 hover:bg-primary-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition text-lg"
-            >
-              Continue to Payment &mdash; {selectedPlan.price}/mo
-            </button>
+            <div className="space-y-3">
+              <button
+                type="submit"
+                disabled={!isFormValid}
+                className="w-full py-4 bg-primary-600 hover:bg-primary-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition text-lg"
+              >
+                Continue to Payment &mdash; {selectedPlan.price}/mo
+              </button>
+              <button
+                type="button"
+                disabled={!isFormValid}
+                onClick={handleWaitlistSubmit}
+                className="w-full py-3 border border-gray-600 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 hover:text-white rounded-xl transition text-sm"
+              >
+                🎁 Join free waitlist — notify me when it launches
+              </button>
+            </div>
           )}
         </form>
 

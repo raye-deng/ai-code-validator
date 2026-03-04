@@ -1,0 +1,17 @@
+name = "aicv-payment"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "b8d84addbb5cadd86f50fe23cb84f559"
+
+[[kv_namespaces]]
+binding = "WAITLIST"
+id = "21a84b6af22e4582bb2ae0c5e404b7aa"
+
+# Secrets (set via wrangler secret put):
+# PAYPAL_CLIENT_ID
+# PAYPAL_SECRET
+# PAYPAL_ENV (live or sandbox)
+# PUBLIC_URL
+# RESEND_API_KEY
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_CHAT_ID
