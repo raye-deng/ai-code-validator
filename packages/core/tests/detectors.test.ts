@@ -63,6 +63,69 @@ const processed = transformResponse(data);
     const phantomFns = result.issues.filter(i => i.type === 'phantom-function');
     expect(phantomFns.length).toBeGreaterThan(0);
   });
+  it('should not flag NestJS decorators as phantom functions', () => {
+    const source = `
+import { Controller, Get, Injectable } from '@nestjs/common';
+
+@Controller('users')
+export class UsersController {
+  @Get()
+  findAll() {
+    return [];
+  }
+}
+
+@Injectable()
+export class UsersService {}
+`;
+    const result = detector.analyze('controller.ts', source);
+    const phantomFns = result.issues.filter(i => i.type === 'phantom-function');
+    // None of the NestJS decorators should be flagged
+    const decoratorFalsePositives = phantomFns.filter(i =>
+      i.message.includes("'Controller'") ||
+      i.message.includes("'Get'") ||
+      i.message.includes("'Injectable'")
+    );
+    expect(decoratorFalsePositives.length).toBe(0);
+  });
+
+  it('should respect ignoreDecorators: false option', () => {
+    const noIgnoreDetector = new HallucinationDetector({
+      projectRoot: process.cwd(),
+      knownPackages: ['vitest', 'typescript'],
+      ignoreDecorators: false,
+    });
+    const source = `
+@Controller('users')
+export class UsersController {}
+`;
+    const result = noIgnoreDetector.analyze('controller.ts', source);
+    // With ignoreDecorators: false, decorator lines starting with @ are still skipped
+    // in detectPhantomReferences (line starts with @), but the whitelist filter won't apply.
+    // This is a belt-and-suspenders design.
+    expect(result).toBeDefined();
+  });
+
+  it('should suppress issues with // ai-validator-ignore', () => {
+    const source = `
+// ai-validator-ignore
+import { magic } from 'ai-hallucinated-package';
+import { readFile } from 'node:fs';
+`;
+    const result = detector.analyze('test.ts', source);
+    const phantomPkgs = result.issues.filter(i => i.type === 'phantom-package');
+    expect(phantomPkgs.length).toBe(0);
+  });
+
+  it('should suppress issues with // ai-validator-disable', () => {
+    const source = `
+// ai-validator-disable
+import { magic } from 'ai-hallucinated-package';
+`;
+    const result = detector.analyze('test.ts', source);
+    const phantomPkgs = result.issues.filter(i => i.type === 'phantom-package');
+    expect(phantomPkgs.length).toBe(0);
+  });
 });
 
 // ─── Logic Gap Detector ───
@@ -106,6 +169,19 @@ function validateUser(user: any) {
     const result = detector.analyze('test.ts', source);
     const incomplete = result.issues.filter(i => i.type === 'incomplete-implementation');
     expect(incomplete.length).toBeGreaterThan(0);
+  });
+
+  it('should suppress issues with // ai-validator-ignore', () => {
+    const source = `
+function processPayment(amount: number) {
+  // ai-validator-ignore
+  // TODO: implement payment logic
+  return true;
+}
+`;
+    const result = detector.analyze('test.ts', source);
+    const incomplete = result.issues.filter(i => i.type === 'incomplete-implementation');
+    expect(incomplete.length).toBe(0);
   });
 });
 

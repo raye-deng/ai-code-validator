@@ -30,6 +30,8 @@ export interface HallucinationDetectorOptions {
   openApiSpecPath?: string;
   /** Extra known packages to whitelist */
   knownPackages?: string[];
+  /** Whether to ignore known framework decorators (default: true) */
+  ignoreDecorators?: boolean;
 }
 
 /** Result of running the hallucination detector on a file */
@@ -217,6 +219,11 @@ function detectPhantomReferences(
   // Look for function calls to undeclared identifiers (very conservative)
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmedLine = line.trim();
+
+    // Skip decorator lines entirely (@Decorator(...))
+    if (trimmedLine.startsWith('@')) continue;
+
     // Match standalone function calls: identifier(...)
     const callMatches = line.matchAll(/\b([a-z]\w*)\s*\(/gi);
     for (const m of callMatches) {
@@ -226,6 +233,8 @@ function detectPhantomReferences(
       // Skip common patterns (methods on objects: obj.method())
       const idx = m.index!;
       if (idx > 0 && line[idx - 1] === '.') continue;
+      // Skip if preceded by @ (decorator call within a line)
+      if (idx > 0 && line[idx - 1] === '@') continue;
       // Skip control flow keywords
       if (['if', 'for', 'while', 'switch', 'catch', 'return', 'throw', 'new', 'typeof', 'instanceof', 'void', 'delete', 'await'].includes(name)) continue;
 
@@ -244,14 +253,48 @@ function detectPhantomReferences(
 }
 
 /**
+ * Known framework decorators that should not be flagged as phantom functions.
+ * Covers NestJS, TypeORM, class-validator, class-transformer, Swagger/OpenAPI, etc.
+ */
+const FRAMEWORK_DECORATORS = new Set([
+  // NestJS core
+  'Controller', 'Get', 'Post', 'Put', 'Delete', 'Patch', 'Options', 'Head', 'All',
+  'Injectable', 'Module', 'Component', 'Pipe', 'Guard', 'Interceptor', 'Middleware',
+  'UseGuards', 'UseInterceptors', 'UsePipes', 'UseFilters', 'Catch',
+  // NestJS parameter decorators
+  'Body', 'Param', 'Query', 'Headers', 'Req', 'Res', 'Next', 'Session', 'UploadedFile',
+  // NestJS DI
+  'Inject', 'InjectRepository', 'InjectQueue',
+  // Swagger / OpenAPI
+  'ApiProperty', 'ApiTags', 'ApiOperation', 'ApiResponse', 'ApiBody', 'ApiBearerAuth',
+  // TypeORM
+  'Column', 'Entity', 'PrimaryGeneratedColumn', 'CreateDateColumn', 'UpdateDateColumn',
+  'ManyToOne', 'OneToMany', 'ManyToMany', 'JoinColumn', 'JoinTable', 'OneToOne',
+  'BeforeInsert', 'AfterInsert', 'BeforeUpdate', 'AfterUpdate', 'BeforeRemove',
+  // class-validator
+  'IsString', 'IsNumber', 'IsBoolean', 'IsEmail', 'IsOptional', 'IsArray', 'IsEnum',
+  'IsNotEmpty', 'MinLength', 'MaxLength', 'Min', 'Max', 'ValidateNested',
+  // class-transformer
+  'Type', 'Expose', 'Exclude', 'Transform',
+  // Express / Fastify
+  'Router',
+  // Angular
+  'Component', 'Directive', 'NgModule', 'Input', 'Output', 'HostListener',
+  // TypeScript / JS builtins used as decorators
+  'Reflect',
+]);
+
+/**
  * Main hallucination detector
  */
 export class HallucinationDetector {
   private validPackages: Set<string>;
   private options: HallucinationDetectorOptions;
+  private ignoreDecorators: boolean;
 
   constructor(options: HallucinationDetectorOptions) {
     this.options = options;
+    this.ignoreDecorators = options.ignoreDecorators ?? true;
     this.validPackages = resolveValidPackages(
       options.projectRoot,
       options.knownPackages,
@@ -286,17 +329,32 @@ export class HallucinationDetector {
 
     // 2. Check for phantom function references
     const phantomRefs = detectPhantomReferences(content, filePath);
-    issues.push(...phantomRefs);
+    for (const ref of phantomRefs) {
+      // Skip known framework decorators if ignoreDecorators is enabled
+      if (this.ignoreDecorators) {
+        const fnName = ref.message.match(/Possible phantom function call: '(\w+)'/)?.[1];
+        if (fnName && FRAMEWORK_DECORATORS.has(fnName)) continue;
+      }
+      issues.push(ref);
+    }
+
+    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
+    const lines = content.split('\n');
+    const filteredIssues = issues.filter(issue => {
+      if (issue.line <= 0) return true;
+      const prevLine = lines[issue.line - 2] || '';
+      return !prevLine.includes('// ai-validator-ignore') && !prevLine.includes('// ai-validator-disable');
+    });
 
     // Calculate score: start at 100, deduct for issues
-    const errorCount = issues.filter(i => i.severity === 'error').length;
-    const warningCount = issues.filter(i => i.severity === 'warning').length;
+    const errorCount = filteredIssues.filter(i => i.severity === 'error').length;
+    const warningCount = filteredIssues.filter(i => i.severity === 'warning').length;
     const deductions = (errorCount * 15) + (warningCount * 5);
     const score = Math.max(0, 100 - deductions);
 
     return {
       file: filePath,
-      issues,
+      issues: filteredIssues,
       score,
     };
   }

@@ -122,10 +122,10 @@ export class DuplicationDetector {
   /** Analyze a single file for duplication issues */
   analyze(filePath: string, source: string): DuplicationResult {
     const lines = source.split('\n');
-    const issues: DuplicationIssue[] = [];
+    const rawIssues: DuplicationIssue[] = [];
 
     // 1. Detect duplicate imports
-    issues.push(...detectDuplicateImports(lines, filePath));
+    rawIssues.push(...detectDuplicateImports(lines, filePath));
 
     // 2. Detect near-duplicate functions within the same file
     const blocks = extractFunctionBlocks(lines);
@@ -133,7 +133,7 @@ export class DuplicationDetector {
       for (let j = i + 1; j < blocks.length; j++) {
         const similarity = computeSimilarity(blocks[i].body, blocks[j].body);
         if (similarity >= this.similarityThreshold) {
-          issues.push({
+          rawIssues.push({
             type: 'duplicate-function',
             severity: 'warning',
             file: filePath,
@@ -145,6 +145,13 @@ export class DuplicationDetector {
         }
       }
     }
+
+    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
+    const issues = rawIssues.filter(issue => {
+      if (issue.line <= 0) return true;
+      const prevLine = lines[issue.line - 2] || '';
+      return !prevLine.includes('// ai-validator-ignore') && !prevLine.includes('// ai-validator-disable');
+    });
 
     const errorCount = issues.filter(i => i.severity === 'error').length;
     const warningCount = issues.filter(i => i.severity === 'warning').length;

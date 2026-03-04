@@ -148,11 +148,18 @@ export class ContextBreakDetector {
   /** Analyze a single file */
   analyze(filePath: string, source: string): ContextBreakResult {
     const lines = source.split('\n');
-    const issues: ContextBreakIssue[] = [
+    const rawIssues: ContextBreakIssue[] = [
       ...detectNamingInconsistency(lines, filePath),
       ...detectModuleSystemMix(lines, filePath),
       ...detectAsyncPatternMix(lines, filePath),
     ];
+
+    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
+    const issues = rawIssues.filter(issue => {
+      if (issue.line <= 0) return true;
+      const prevLine = lines[issue.line - 2] || '';
+      return !prevLine.includes('// ai-validator-ignore') && !prevLine.includes('// ai-validator-disable');
+    });
 
     const errorCount = issues.filter(i => i.severity === 'error').length;
     const warningCount = issues.filter(i => i.severity === 'warning').length;

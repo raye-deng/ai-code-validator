@@ -247,12 +247,19 @@ export class LogicGapDetector {
    */
   analyze(filePath: string, source: string): LogicGapResult {
     const lines = source.split('\n');
-    const issues: LogicGapIssue[] = [
+    const rawIssues: LogicGapIssue[] = [
       ...detectEmptyCatch(lines, filePath),
       ...detectIncompleteImpl(lines, filePath),
       ...detectUnreachableCode(lines, filePath),
       ...detectMissingErrorHandling(lines, filePath),
     ];
+
+    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
+    const issues = rawIssues.filter(issue => {
+      if (issue.line <= 0) return true;
+      const prevLine = lines[issue.line - 2] || '';
+      return !prevLine.includes('// ai-validator-ignore') && !prevLine.includes('// ai-validator-disable');
+    });
 
     const errorCount = issues.filter(i => i.severity === 'error').length;
     const warningCount = issues.filter(i => i.severity === 'warning').length;
