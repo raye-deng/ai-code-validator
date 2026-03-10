@@ -176,43 +176,48 @@ export class ContextCoherenceDetector implements V4Detector {
     }
 
     for (const [, scopeUnits] of scopeMap) {
-      // Find duplicate function definitions within the same scope
-      const nameToUnits = new Map<string, CodeUnit[]>();
+      const nameToUnits = this.groupByFunctionName(scopeUnits);
+      this.reportDuplicates(nameToUnits, results);
+    }
+  }
 
-      for (const unit of scopeUnits) {
-        // Extract function name from unit ID or definitions
-        for (const def of unit.definitions) {
-          if (def.kind === 'function' || def.kind === 'method') {
-            if (!nameToUnits.has(def.name)) {
-              nameToUnits.set(def.name, []);
-            }
-            nameToUnits.get(def.name)!.push(unit);
-          }
-        }
+  /** Group code units by their function/method definition names. */
+  private groupByFunctionName(scopeUnits: CodeUnit[]): Map<string, CodeUnit[]> {
+    const nameToUnits = new Map<string, CodeUnit[]>();
+    for (const unit of scopeUnits) {
+      for (const def of unit.definitions) {
+        if (def.kind !== 'function' && def.kind !== 'method') continue;
+        if (!nameToUnits.has(def.name)) nameToUnits.set(def.name, []);
+        nameToUnits.get(def.name)!.push(unit);
       }
+    }
+    return nameToUnits;
+  }
 
-      for (const [name, duplicateUnits] of nameToUnits) {
-        if (duplicateUnits.length > 1) {
-          // Report on the duplicate (second and later occurrences)
-          for (let i = 1; i < duplicateUnits.length; i++) {
-            const unit = duplicateUnits[i];
-            results.push({
-              detectorId: this.id,
-              severity: 'warning',
-              category: this.category,
-              messageKey: 'context-coherence.duplicate-function',
-              message: `Function "${name}" is defined ${duplicateUnits.length} times in the same scope. This likely indicates an AI context window issue.`,
-              file: unit.file,
-              line: unit.location.startLine + 1, // 0-based to 1-based
-              confidence: 0.85,
-              metadata: {
-                functionName: name,
-                occurrences: duplicateUnits.length,
-                analysisType: 'duplicate-function',
-              },
-            });
-          }
-        }
+  /** Report duplicate function definitions within the same scope. */
+  private reportDuplicates(
+    nameToUnits: Map<string, CodeUnit[]>,
+    results: DetectorResult[],
+  ): void {
+    for (const [name, duplicateUnits] of nameToUnits) {
+      if (duplicateUnits.length <= 1) continue;
+      for (let i = 1; i < duplicateUnits.length; i++) {
+        const unit = duplicateUnits[i];
+        results.push({
+          detectorId: this.id,
+          severity: 'warning',
+          category: this.category,
+          messageKey: 'context-coherence.duplicate-function',
+          message: `Function "${name}" is defined ${duplicateUnits.length} times in the same scope. This likely indicates an AI context window issue.`,
+          file: unit.file,
+          line: unit.location.startLine + 1,
+          confidence: 0.85,
+          metadata: {
+            functionName: name,
+            occurrences: duplicateUnits.length,
+            analysisType: 'duplicate-function',
+          },
+        });
       }
     }
   }

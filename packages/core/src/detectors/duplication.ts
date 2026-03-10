@@ -65,25 +65,31 @@ function extractBracedBody(lines: string[], startIdx: number): string[] {
   return bodyLines;
 }
 
+/** Try to match a function declaration on a given line. */
+function matchFunctionDeclaration(line: string): RegExpMatchArray | null {
+  const isDestructuring = /(?:const|let|var)\s*\{/.test(line) || /(?:const|let|var)\s*\[/.test(line);
+  if (isDestructuring) return null;
+  const isSimpleAssignment = /(?:const|let|var)\s+\w+\s*=\s*[^(=>]/.test(line) &&
+    !/(?:async\s*)?\(/.test(line.split('=').slice(1).join('='));
+  if (isSimpleAssignment) return null;
+  return line.match(
+    /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:(?:public|private|protected|static|async|override)\s+)+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\()/,
+  );
+}
+
 function extractFunctionBlocks(
   lines: string[],
 ): Array<{ name: string; startLine: number; body: string[] }> {
   const blocks: Array<{ name: string; startLine: number; body: string[] }> = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const isDestructuring = /(?:const|let|var)\s*\{/.test(line) || /(?:const|let|var)\s*\[/.test(line);
-    const isSimpleAssignment = /(?:const|let|var)\s+\w+\s*=\s*[^(=>]/.test(line) && !/(?:async\s*)?\(/.test(line.split('=').slice(1).join('='));
-    const funcMatch = !isDestructuring && !isSimpleAssignment ? line.match(
-      /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:(?:public|private|protected|static|async|override)\s+)+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\()/,
-    ) : null;
+    const funcMatch = matchFunctionDeclaration(lines[i]);
+    if (!funcMatch) continue;
 
-    if (funcMatch) {
-      const name = funcMatch[1] || funcMatch[2] || funcMatch[3];
-      const bodyLines = extractBracedBody(lines, i);
-      if (bodyLines.length > 2) {
-        blocks.push({ name, startLine: i + 1, body: bodyLines });
-      }
+    const name = funcMatch[1] || funcMatch[2] || funcMatch[3];
+    const bodyLines = extractBracedBody(lines, i);
+    if (bodyLines.length > 2) {
+      blocks.push({ name, startLine: i + 1, body: bodyLines });
     }
   }
 

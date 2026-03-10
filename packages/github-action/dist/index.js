@@ -43334,19 +43334,27 @@ function extractBracedBody(lines, startIdx) {
     }
     return bodyLines;
 }
+/** Try to match a function declaration on a given line. */
+function matchFunctionDeclaration(line) {
+    const isDestructuring = /(?:const|let|var)\s*\{/.test(line) || /(?:const|let|var)\s*\[/.test(line);
+    if (isDestructuring)
+        return null;
+    const isSimpleAssignment = /(?:const|let|var)\s+\w+\s*=\s*[^(=>]/.test(line) &&
+        !/(?:async\s*)?\(/.test(line.split('=').slice(1).join('='));
+    if (isSimpleAssignment)
+        return null;
+    return line.match(/(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:(?:public|private|protected|static|async|override)\s+)+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\()/);
+}
 function extractFunctionBlocks(lines) {
     const blocks = [];
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const isDestructuring = /(?:const|let|var)\s*\{/.test(line) || /(?:const|let|var)\s*\[/.test(line);
-        const isSimpleAssignment = /(?:const|let|var)\s+\w+\s*=\s*[^(=>]/.test(line) && !/(?:async\s*)?\(/.test(line.split('=').slice(1).join('='));
-        const funcMatch = !isDestructuring && !isSimpleAssignment ? line.match(/(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:(?:public|private|protected|static|async|override)\s+)+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\()/) : null;
-        if (funcMatch) {
-            const name = funcMatch[1] || funcMatch[2] || funcMatch[3];
-            const bodyLines = extractBracedBody(lines, i);
-            if (bodyLines.length > 2) {
-                blocks.push({ name, startLine: i + 1, body: bodyLines });
-            }
+        const funcMatch = matchFunctionDeclaration(lines[i]);
+        if (!funcMatch)
+            continue;
+        const name = funcMatch[1] || funcMatch[2] || funcMatch[3];
+        const bodyLines = extractBracedBody(lines, i);
+        if (bodyLines.length > 2) {
+            blocks.push({ name, startLine: i + 1, body: bodyLines });
         }
     }
     return blocks;
@@ -46474,6 +46482,81 @@ const KOTLIN_BUILTINS = new Set([
 
 
 //# sourceMappingURL=index.js.map
+// EXTERNAL MODULE: external "node:crypto"
+var external_node_crypto_ = __nccwpck_require__(7598);
+;// CONCATENATED MODULE: ../core/dist/license/generator.js
+/**
+ * License Key Generator
+ *
+ * Generates and validates AICV license keys in the format:
+ * AICV-XXXX-XXXX-XXXX-XXXX
+ *
+ * Each group contains 4 characters from a set that excludes
+ * easily confused characters (I/O/0/1/L).
+ *
+ * @since 0.3.0
+ */
+
+/**
+ * Character set for license key generation.
+ * Excludes I, O, 0, 1, L to avoid confusion in manual entry.
+ */
+const LICENSE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** License key prefix */
+const LICENSE_PREFIX = 'AICV';
+/** Number of character groups after the prefix */
+const GROUP_COUNT = 4;
+/** Characters per group */
+const GROUP_SIZE = 4;
+/**
+ * Regular expression pattern for valid license keys.
+ * Format: AICV-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}
+ */
+const LICENSE_FORMAT_REGEX = /^AICV-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
+/**
+ * Generate a new License Key.
+ *
+ * Format: AICV-XXXX-XXXX-XXXX-XXXX
+ * Each X is a character from: ABCDEFGHJKLMNPQRSTUVWXYZ23456789
+ *
+ * @returns A new license key string
+ *
+ * @example
+ * ```ts
+ * const key = generateLicenseKey();
+ * // => "AICV-8F3A-K9D2-P7X1-Q4M6"
+ * ```
+ */
+function generateLicenseKey() {
+    const parts = [];
+    for (let g = 0; g < GROUP_COUNT; g++) {
+        let part = '';
+        for (let i = 0; i < GROUP_SIZE; i++) {
+            part += LICENSE_CHARS[randomInt(LICENSE_CHARS.length)];
+        }
+        parts.push(part);
+    }
+    return `${LICENSE_PREFIX}-${parts.join('-')}`;
+}
+/**
+ * Validate whether a string matches the license key format.
+ *
+ * Does NOT verify the key against the API — only checks format.
+ *
+ * @param key - String to validate
+ * @returns true if the key matches AICV-XXXX-XXXX-XXXX-XXXX format
+ *
+ * @example
+ * ```ts
+ * isValidLicenseFormat('AICV-8F3A-K9D2-P7X1-Q4M6'); // true
+ * isValidLicenseFormat('AICV-0000-1111-OOOO-LLLL'); // false (contains 0, 1, O, L)
+ * isValidLicenseFormat('invalid'); // false
+ * ```
+ */
+function generator_isValidLicenseFormat(key) {
+    return LICENSE_FORMAT_REGEX.test(key);
+}
+//# sourceMappingURL=generator.js.map
 ;// CONCATENATED MODULE: ../core/dist/license/validator.js
 /**
  * License Validator
@@ -51308,41 +51391,46 @@ class ContextCoherenceDetector {
             }
         }
         for (const [, scopeUnits] of scopeMap) {
-            // Find duplicate function definitions within the same scope
-            const nameToUnits = new Map();
-            for (const unit of scopeUnits) {
-                // Extract function name from unit ID or definitions
-                for (const def of unit.definitions) {
-                    if (def.kind === 'function' || def.kind === 'method') {
-                        if (!nameToUnits.has(def.name)) {
-                            nameToUnits.set(def.name, []);
-                        }
-                        nameToUnits.get(def.name).push(unit);
-                    }
-                }
+            const nameToUnits = this.groupByFunctionName(scopeUnits);
+            this.reportDuplicates(nameToUnits, results);
+        }
+    }
+    /** Group code units by their function/method definition names. */
+    groupByFunctionName(scopeUnits) {
+        const nameToUnits = new Map();
+        for (const unit of scopeUnits) {
+            for (const def of unit.definitions) {
+                if (def.kind !== 'function' && def.kind !== 'method')
+                    continue;
+                if (!nameToUnits.has(def.name))
+                    nameToUnits.set(def.name, []);
+                nameToUnits.get(def.name).push(unit);
             }
-            for (const [name, duplicateUnits] of nameToUnits) {
-                if (duplicateUnits.length > 1) {
-                    // Report on the duplicate (second and later occurrences)
-                    for (let i = 1; i < duplicateUnits.length; i++) {
-                        const unit = duplicateUnits[i];
-                        results.push({
-                            detectorId: this.id,
-                            severity: 'warning',
-                            category: this.category,
-                            messageKey: 'context-coherence.duplicate-function',
-                            message: `Function "${name}" is defined ${duplicateUnits.length} times in the same scope. This likely indicates an AI context window issue.`,
-                            file: unit.file,
-                            line: unit.location.startLine + 1, // 0-based to 1-based
-                            confidence: 0.85,
-                            metadata: {
-                                functionName: name,
-                                occurrences: duplicateUnits.length,
-                                analysisType: 'duplicate-function',
-                            },
-                        });
-                    }
-                }
+        }
+        return nameToUnits;
+    }
+    /** Report duplicate function definitions within the same scope. */
+    reportDuplicates(nameToUnits, results) {
+        for (const [name, duplicateUnits] of nameToUnits) {
+            if (duplicateUnits.length <= 1)
+                continue;
+            for (let i = 1; i < duplicateUnits.length; i++) {
+                const unit = duplicateUnits[i];
+                results.push({
+                    detectorId: this.id,
+                    severity: 'warning',
+                    category: this.category,
+                    messageKey: 'context-coherence.duplicate-function',
+                    message: `Function "${name}" is defined ${duplicateUnits.length} times in the same scope. This likely indicates an AI context window issue.`,
+                    file: unit.file,
+                    line: unit.location.startLine + 1,
+                    confidence: 0.85,
+                    metadata: {
+                        functionName: name,
+                        occurrences: duplicateUnits.length,
+                        analysisType: 'duplicate-function',
+                    },
+                });
             }
         }
     }
