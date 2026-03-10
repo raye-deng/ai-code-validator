@@ -1,8 +1,8 @@
 {
   "name": "@open-code-review/github-action",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "GitHub Action for AI-generated code validation",
+  "description": "GitHub Action for AI code quality gate — V4 pipeline",
   "main": "./dist/index.js",
   "type": "module",
   "scripts": {

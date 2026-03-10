@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { resolve, relative, join } from 'node:path';
 import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
+import { execSync } from 'node:child_process';
 import { glob } from 'glob';
 import {
   // V3 detectors (legacy)
@@ -44,6 +45,11 @@ import {
   V4TerminalReporter,
   generateV4HTML,
   generateDefaultConfigYaml,
+  // Diff support
+  parseDiff,
+  parseNameStatus,
+  filterByDiff,
+  getScannableFiles,
 } from '@open-code-review/core';
 import type {
   ReportFormat,
@@ -52,6 +58,7 @@ import type {
   V4ScoreResult,
   SLALevel,
   Locale,
+  DiffResult,
 } from '@open-code-review/core';
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -95,6 +102,10 @@ interface ParsedArgs {
   aiRemoteKey?: string;
   noScore?: boolean;
   json?: boolean;
+  // Diff options
+  diff?: boolean;
+  base?: string;
+  head?: string;
   // V3 options
   threshold: number;
   output?: string;
@@ -129,6 +140,9 @@ function parseArgs(argv: string[]): ParsedArgs {
   let aiRemoteKey: string | undefined;
   let noScore = false;
   let json = false;
+  let diff = false;
+  let base: string | undefined;
+  let head: string | undefined;
 
   // Handle config subcommand
   if (command === 'config') {
@@ -141,7 +155,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       command, subcommand, paths, threshold, output, healPrompt, license,
       configKey, configValue, sla, locale, format, configPath, offline,
       include, exclude, aiLocalModel, aiLocalUrl, aiRemoteProvider,
-      aiRemoteModel, aiRemoteKey, noScore, json,
+      aiRemoteModel, aiRemoteKey, noScore, json, diff, base, head,
     };
   }
 
@@ -186,6 +200,15 @@ function parseArgs(argv: string[]): ParsedArgs {
       case '--json':
         json = true;
         break;
+      case '--diff':
+        diff = true;
+        break;
+      case '--base':
+        base = args[++i];
+        break;
+      case '--head':
+        head = args[++i];
+        break;
       case '--threshold':
         threshold = parseInt(args[++i], 10);
         break;
@@ -212,7 +235,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     command, subcommand, paths, threshold, format, output, healPrompt,
     license, configKey, configValue, sla, locale, configPath, offline,
     include, exclude, aiLocalModel, aiLocalUrl, aiRemoteProvider,
-    aiRemoteModel, aiRemoteKey, noScore, json,
+    aiRemoteModel, aiRemoteKey, noScore, json, diff, base, head,
   };
 }
 
@@ -315,6 +338,51 @@ async function commandV4Scan(parsed: ParsedArgs): Promise<boolean> {
     console.error('');
   }
 
+  // ─── Diff Mode ──────────────────────────────────────────────────
+  let diffResult: DiffResult | undefined;
+  if (parsed.diff) {
+    const baseRef = parsed.base ?? 'origin/main';
+    const headRef = parsed.head ?? 'HEAD';
+
+    if (format === 'terminal') {
+      console.error(`  Diff mode: ${baseRef}...${headRef}`);
+    }
+
+    try {
+      // Get unified diff for line-level filtering
+      const diffText = execSync(`git diff ${baseRef}...${headRef}`, {
+        cwd: projectRoot,
+        encoding: 'utf-8',
+        maxBuffer: 50 * 1024 * 1024, // 50MB
+      });
+      diffResult = parseDiff(diffText);
+
+      // Get changed files and filter to scannable extensions
+      const scannableFiles = getScannableFiles(diffResult);
+
+      if (scannableFiles.length === 0) {
+        if (format === 'terminal') {
+          console.error('  No scannable files changed in diff.');
+          console.error('');
+        }
+        console.log(format === 'json' ? JSON.stringify({ version: '4.0', issues: [], files: [], score: { total: 100, grade: 'A', passed: true } }, null, 2) : 'No scannable files changed.');
+        return true;
+      }
+
+      if (format === 'terminal') {
+        console.error(`  Diff Mode: scanning ${scannableFiles.length} changed file(s)`);
+      }
+
+      // Restrict v4Config include patterns to only the changed files
+      v4Config.include = scannableFiles.map(f => `**/${f.split('/').pop()}`);
+    } catch (err) {
+      if (format === 'terminal') {
+        console.error(`  ⚠ Diff mode failed (${err instanceof Error ? err.message : 'unknown error'}), falling back to full scan`);
+      }
+      diffResult = undefined;
+    }
+  }
+
   // Create and run V4 scanner
   const scanner = new V4Scanner(v4Config);
 
@@ -324,8 +392,17 @@ async function commandV4Scan(parsed: ParsedArgs): Promise<boolean> {
 
   const result = await scanner.scan();
 
+  // Apply diff filter if in diff mode
+  if (diffResult) {
+    const originalCount = result.issues.length;
+    result.issues = filterByDiff(result.issues, diffResult);
+    if (format === 'terminal') {
+      console.error(`  Diff filter: ${originalCount} → ${result.issues.length} issue(s) on changed lines`);
+    }
+  }
+
   if (format === 'terminal') {
-    console.error(`  Found ${result.issues.length} issue(s) in ${result.files.length} file(s)`);
+    console.error(`  Found ${result.issues.length} issue(s) in ${result.files.length} file(s)${diffResult ? ' (diff mode)' : ''}`);
     console.error('');
   }
 
@@ -807,6 +884,9 @@ COMMANDS:
   help                  Show this help message
 
 V4 SCAN OPTIONS:
+  --diff                Enable diff-only scanning (scan changed files only)
+  --base <ref>          Base branch/commit for diff (default: origin/main)
+  --head <ref>          Head branch/commit for diff (default: HEAD)
   --sla <level>         SLA level: L1 (fast), L2 (standard), L3 (deep) [default: L1]
   --locale <locale>     Output language: en, zh [default: en]
   --format <format>     Output format: terminal, json, sarif, markdown, html [default: terminal]
@@ -841,6 +921,8 @@ EXAMPLES:
   open-code-review scan ./src --sla L2 --locale zh
   open-code-review scan . --format json --output report.json
   open-code-review scan . --offline --no-score
+  open-code-review scan . --diff                          # scan only changed files vs origin/main
+  open-code-review scan . --diff --base develop --head HEAD
   open-code-review scan-v3 ./src --threshold 80
   open-code-review init
   open-code-review login

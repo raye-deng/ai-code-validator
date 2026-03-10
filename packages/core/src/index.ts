@@ -116,9 +116,10 @@ export { ReportGenerator } from './scorer/report.js';
 export type { ReportFormat } from './scorer/report.js';
 
 // ─── Reporter (V3) ───
+// Note: ReportFormat from reporter/ is aliased to avoid collision with scorer/report's ReportFormat
 
 export { generateReport, generateHTML, generateV4HTML, generateSARIF, generateMarkdown, generateTerminal } from './reporter/index.js';
-export type { ReportFormat as ReportFormatV3, ReportOptions, ReportData } from './reporter/index.js';
+export type { ReportFormat as ReporterOutputFormat, ReportOptions, ReportData } from './reporter/index.js';
 
 // ─── AI Analysis (Tier 3) ───
 
@@ -291,6 +292,11 @@ export {
 } from './config/v4-config.js';
 
 export type { V4Config, LoadV4ConfigOptions } from './config/v4-config.js';
+
+// ─── V4: Diff Support ───
+
+export { parseDiff, parseNameStatus, filterByDiff, getScannableFiles } from './diff/index.js';
+export type { DiffFile, DiffResult } from './diff/index.js';
 
 // ─── V4: AI Pipeline ───
 

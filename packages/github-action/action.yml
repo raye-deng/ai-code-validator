@@ -1,5 +1,5 @@
 name: 'Open Code Review'
-description: 'Quality gate for AI-generated code - detect hallucinations, logic gaps, and architectural inconsistencies'
+description: 'AI code quality gate — detect hallucinations, stale APIs, logic gaps in PRs'
 author: 'open-code-review'
 
 branding:
@@ -7,16 +7,23 @@ branding:
   color: 'purple'
 
 inputs:
+  sla:
+    description: 'Scan level: L1 (structural), L2 (+ embedding), L3 (+ LLM deep scan)'
+    required: false
+    default: 'L1'
   threshold:
-    description: 'Minimum quality score (0-100) to pass'
+    description: 'Minimum score to pass (0-100)'
     required: false
     default: '70'
-  paths:
-    description: 'Paths to scan (glob patterns, comma-separated)'
+  scan-mode:
+    description: 'Scan mode: diff (changed files only) or full'
     required: false
-    default: 'src/**/*.ts,src/**/*.js'
+    default: 'diff'
+  ollama-url:
+    description: 'Ollama API URL for local AI (L2/L3). If not provided, L2 uses TF-IDF fallback.'
+    required: false
   fail-on-low-score:
-    description: 'Fail the workflow if score is below threshold'
+    description: 'Fail workflow if score is below threshold'
     required: false
     default: 'true'
   github-token:
@@ -26,9 +33,11 @@ inputs:
 
 outputs:
   score:
-    description: 'Overall quality score (0-100)'
-  report:
-    description: 'Path to the JSON report file'
+    description: 'Quality score (0-100)'
+  grade:
+    description: 'Letter grade (A-F)'
+  issues-count:
+    description: 'Total issues found'
 
 runs:
   using: 'node20'

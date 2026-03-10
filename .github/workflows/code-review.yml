@@ -1,0 +1,42 @@
+name: Open Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'packages/**/*.ts'
+      - 'apps/**/*.ts'
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core
+        run: pnpm --filter @open-code-review/core build
+
+      - name: Open Code Review
+        uses: ./packages/github-action
+        with:
+          sla: L1
+          threshold: 60
+          scan-mode: diff
+          github-token: ${{ secrets.GITHUB_TOKEN }}

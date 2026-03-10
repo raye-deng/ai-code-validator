@@ -1,7 +1,9 @@
 /**
- * Open Code Review — GitHub Action
+ * Open Code Review — GitHub Action (V4)
  *
- * Runs AI code validation as part of GitHub Actions CI/CD.
- * Posts results as PR comments and sets quality gate status.
+ * Runs V4 AI code validation pipeline in GitHub Actions CI/CD.
+ * Supports diff-only scanning, L1/L2 SLA levels, and PR comments.
+ *
+ * @since 0.4.0
  */
 export {};
