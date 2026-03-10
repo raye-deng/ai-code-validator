@@ -58,11 +58,11 @@
 
 | # | 任务 | 文件/模块 | 状态 |
 |---|------|----------|------|
-| 2.1 | StaleAPIDetector | `packages/core/src/detectors/stale-api.ts` + `data/deprecated-apis/` | ⬜ |
-| 2.2 | SecurityPatternDetector | `packages/core/src/detectors/security-pattern.ts` | ⬜ |
-| 2.3 | OverEngineeringDetector | `packages/core/src/detectors/over-engineering.ts` | ⬜ |
-| 2.4 | DeepHallucinationDetector | `packages/core/src/detectors/deep-hallucination.ts` | ⬜ |
-| 2.5 | TypeSafetyDetector (TS only) | `packages/core/src/detectors/type-safety.ts` | ⬜ |
+| 2.1 | StaleAPIDetector | `packages/core/src/detectors/stale-api.ts` + `data/deprecated-apis-js.json` | ✅ |
+| 2.2 | SecurityPatternDetector | `packages/core/src/detectors/security-pattern.ts` | ✅ |
+| 2.3 | OverEngineeringDetector | `packages/core/src/detectors/over-engineering.ts` | ✅ |
+| 2.4 | DeepHallucinationDetector | `packages/core/src/detectors/deep-hallucination.ts` | ✅ |
+| 2.5 | TypeSafetyDetector (TS only) | `packages/core/src/detectors/type-safety.ts` | ✅ |
 | 2.6 | Python LanguageAdapter | `packages/core/src/languages/python/` | ✅ |
 | 2.7 | PyPI + Python 废弃 API 数据库 | `data/deprecated-apis/python.json` | ✅ |
 | 2.8 | 全检测器 × Python 单元测试 | `packages/core/tests/python/` | ✅ |
