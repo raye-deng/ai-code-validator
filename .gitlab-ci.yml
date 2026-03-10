@@ -15,7 +15,7 @@ test:
     - corepack prepare pnpm@10.23.0 --activate
     - pnpm install --frozen-lockfile
   script:
-    - pnpm --filter @open-code-review/core test
+    - cd packages/core && npx vitest run --config vitest.ci.config.ts
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
