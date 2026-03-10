@@ -1,0 +1,237 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║           Open Code Review V4 — Quality Report              ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Project: /tmp/ocr-demo/chi
+  Date: 2026-03-10T19:24:22.387Z
+  SLA: L1 Fast — Structural analysis only
+
+  📊 130 issues found in 74 files
+
+  Overall Score: 70/100  🟡 C
+  Threshold: 70
+  Status: ✅ PASSED
+
+  Files Scanned: 74
+  Languages: go
+  Duration: 501ms
+
+  ── Stage Timing ──
+    Discovery:  4ms
+    Parsing:    453ms
+    Detection:  24ms
+
+  ── Scoring Dimensions ──
+
+  AI Faithfulness           ████████████████████ 35/35 (100%)
+  Code Freshness            ████████████████████ 25/25 (100%)
+  Context Coherence         █████████░░░░░░░░░░░ 9/20 (45%)
+  Implementation Quality    █░░░░░░░░░░░░░░░░░░░ 1/20 (5%)
+
+  ── Issues by Category ──
+
+    Context Coherence: 113
+    Implementation Quality: 17
+
+  ── File Details ──
+
+  ─── _examples/custom-handler/main.go (4 issues)
+
+    ⚪ [info] L20: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L26: Function "customHandler" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L20: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L26: Function "customHandler" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/custom-method/main.go (4 issues)
+
+    ⚪ [info] L10: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L16: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L10: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L16: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/fileserver/main.go (2 issues)
+
+    ⚪ [info] L28: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L28: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/graceful/main.go (2 issues)
+
+    ⚪ [info] L17: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L17: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/hello-world/main.go (2 issues)
+
+    ⚪ [info] L10: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L10: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/limits/main.go (2 issues)
+
+    ⚪ [info] L21: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L21: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/logging/main.go (2 issues)
+
+    ⚪ [info] L7: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L7: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/pathvalue/main.go (4 issues)
+
+    ⚪ [info] L10: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L20: Function "pathValueHandler" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L10: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L20: Function "pathValueHandler" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/rest/main.go (9 issues)
+
+    🟡 [warning] L327: Function "Bind" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L372: Function "Render" is defined 3 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L410: Function "Render" is defined 3 times in the same scope. This likely indicates an AI context window issue.
+    ⚪ [info] L55: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L248: Function "paginate" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 4 more
+
+  ─── _examples/router-walk/main.go (2 issues)
+
+    ⚪ [info] L11: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L11: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/todos-resource/main.go (2 issues)
+
+    ⚪ [info] L14: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L14: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/todos-resource/todos.go (2 issues)
+
+    ⚪ [info] L9: Type "todosResource" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L9: Type "todosResource" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/todos-resource/users.go (2 issues)
+
+    ⚪ [info] L9: Type "usersResource" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L9: Type "usersResource" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── _examples/versions/main.go (8 issues)
+
+    ⚪ [info] L22: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L71: Function "listArticles" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L103: Function "getArticle" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L142: Function "randomErrorMiddleware" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L22: Function "main" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 3 more
+
+  ─── context.go (3 issues)
+
+    🟡 [warning] L100: Function "URLParam" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    ⚪ [info] L160: Type "contextKey" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L160: Type "contextKey" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/compress.go (10 issues)
+
+    ⚪ [info] L256: Type "ioResetterWriter" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L261: Type "compressResponseWriter" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L333: Type "compressFlusher" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L378: Function "encoderGzip" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L386: Function "encoderDeflate" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 5 more
+
+  ─── middleware/logger.go (4 issues)
+
+    ⚪ [info] L127: Type "defaultLogEntry" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L166: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L166: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L127: Type "defaultLogEntry" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/logger_test.go (2 issues)
+
+    ⚪ [info] L13: Type "testLoggerWriter" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L13: Type "testLoggerWriter" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/middleware.go (2 issues)
+
+    ⚪ [info] L17: Type "contextKey" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L17: Type "contextKey" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/middleware_test.go (4 issues)
+
+    🔴 [error] L67: TLS certificate verification is disabled. This enables man-in-the-middle attacks.
+    🔴 [error] L67: TLS certificate verification is disabled. This enables man-in-the-middle attacks.
+    ⚪ [info] L17: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L17: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/recoverer.go (2 issues)
+
+    ⚪ [info] L66: Type "prettyStack" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L66: Type "prettyStack" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/recoverer_test.go (2 issues)
+
+    ⚪ [info] L13: Function "panickingHandler" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L13: Function "panickingHandler" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/request_id.go (4 issues)
+
+    ⚪ [info] L18: Type "ctxKeyRequestID" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L46: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L46: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L18: Type "ctxKeyRequestID" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/terminal.go (2 issues)
+
+    ⚪ [info] L37: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L37: Function "init" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/throttle.go (4 issues)
+
+    ⚪ [info] L134: Type "token" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L137: Type "throttler" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L134: Type "token" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L137: Type "throttler" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── middleware/wrap_writer.go (17 issues)
+
+    🟡 [warning] L172: Function "Flush" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L194: Function "Flush" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L235: Function "Flush" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L178: Function "Hijack" is defined 3 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L200: Function "Hijack" is defined 3 times in the same scope. This likely indicates an AI context window issue.
+    ... and 12 more
+
+  ─── mux_test.go (6 issues)
+
+    🟡 [warning] L16: Function has 147 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L956: Function has 131 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L16: Function has cyclomatic complexity of 20 (max: 15). Consider simplifying the logic.
+    🟡 [warning] L885: Function has cyclomatic complexity of 16 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L2013: Type "ctxKey" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 1 more
+
+  ─── tree.go (15 issues)
+
+    🟡 [warning] L802: Function "findEdge" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L838: Function "walk" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L401: Function has nesting depth of 7 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L687: Function has nesting depth of 5 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L401: Function has 106 lines of code (max: 100). Consider breaking it into smaller functions.
+    ... and 10 more
+
+  ─── middleware/route_headers_test.go (1 issues)
+
+    🟡 [warning] L10: Function has 136 lines of code (max: 100). Consider breaking it into smaller functions.
+
+  ─── tree_test.go (1 issues)
+
+    🟡 [warning] L10: Function has 113 lines of code (max: 100). Consider breaking it into smaller functions.
+
+  ─── middleware/strip_test.go (3 issues)
+
+    🟡 [warning] L102: Function has cyclomatic complexity of 24 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L295: HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.
+    ⚪ [info] L295: HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.
+
+  ─── mux.go (1 issues)
+
+    🟡 [warning] L289: Function has cyclomatic complexity of 17 (max: 15). Consider simplifying the logic.
+
+──────────────────────────────────────────────────────────────
+  Generated at: 2026-03-10T19:24:22.387Z

@@ -40,6 +40,9 @@ export class DefaultI18nProvider implements I18nProvider {
     this.catalogs = new Map<Locale, Record<string, string>>();
     this.catalogs.set('en', EN_MESSAGES);
     this.catalogs.set('zh', ZH_MESSAGES);
+
+    // Bind t() so it can be destructured: const { t } = i18n;
+    this.t = this.t.bind(this);
   }
 
   get locale(): Locale {

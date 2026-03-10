@@ -1,0 +1,283 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║           Open Code Review V4 — Quality Report              ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Project: /tmp/ocr-demo/moshi
+  Date: 2026-03-10T19:24:25.602Z
+  SLA: L1 Fast — Structural analysis only
+
+  📊 141 issues found in 156 files
+
+  Overall Score: 58/100  🔴 F
+  Threshold: 70
+  Status: ❌ FAILED
+
+  Files Scanned: 156
+  Languages: kotlin, java
+  Duration: 1.8s
+
+  ── Stage Timing ──
+    Discovery:  16ms
+    Parsing:    1671ms
+    Detection:  104ms
+
+  ── Scoring Dimensions ──
+
+  AI Faithfulness           ████████████████████ 35/35 (100%)
+  Code Freshness            ██████████████████░░ 22.5/25 (90%)
+  Context Coherence         ░░░░░░░░░░░░░░░░░░░░ 0/20 (0%)
+  Implementation Quality    ░░░░░░░░░░░░░░░░░░░░ 0/20 (0%)
+
+  ── Issues by Category ──
+
+    Code Freshness: 2
+    Context Coherence: 108
+    Implementation Quality: 31
+
+  ── File Details ──
+
+  ─── moshi/src/main/java/com/squareup/moshi/internal/Util.kt (8 issues)
+
+    🟡 [warning] L401: Hashtable is legacy; use HashMap or ConcurrentHashMap
+    🟡 [warning] L401: Hashtable is legacy; use HashMap or ConcurrentHashMap
+    🟡 [warning] L89: Function "jsonName" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L209: Function "resolve" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L209: Function has nesting depth of 5 (max: 4). Consider early returns or extracting helper functions.
+    ... and 3 more
+
+  ─── examples/src/main/java/com/squareup/moshi/recipes/CustomQualifier.java (1 issues)
+
+    ⚪ [info] L48: Class "Rectangle" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── examples/src/main/java/com/squareup/moshi/recipes/FallbackEnum.java (3 issues)
+
+    ⚪ [info] L34: Class "FallbackEnum" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L34: Class "FallbackEnum" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L108: Class "Example" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── examples/src/main/java/com/squareup/moshi/recipes/Unwrap.java (2 issues)
+
+    ⚪ [info] L35: Class "Unwrap" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L35: Class "Unwrap" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/main/java/com/squareup/moshi/internal/ClassFactory.kt (2 issues)
+
+    ⚪ [info] L29: Class "ClassFactory" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L29: Class "ClassFactory" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/main/java/com/squareup/moshi/internal/LinkedHashTreeMap.kt (3 issues)
+
+    🟡 [warning] L366: Function has cyclomatic complexity of 24 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L569: Function "writeReplace" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L569: Function "writeReplace" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/test/java/com/squareup/moshi/AdapterMethodsTest.java (1 issues)
+
+    ⚪ [info] L896: Interface "Shape" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/test/java/com/squareup/moshi/MoshiTest.java (3 issues)
+
+    ⚪ [info] L1079: Class "HasPlatformType" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L1082: Class "Wrapper" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L1086: Class "ListWrapper" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/test/java/com/squareup/moshi/RecursiveTypesResolveTest.java (2 issues)
+
+    ⚪ [info] L39: Class "Foo1" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L43: Class "Foo2" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/test/java/com/squareup/moshi/TypesTest.java (13 issues)
+
+    🟡 [warning] L214: Function "getFirstTypeArgument" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    ⚪ [info] L200: Class "A" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L202: Class "B" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L204: Class "C" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L206: Class "D" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 8 more
+
+  ─── moshi/src/test/java/com/squareup/moshi/internal/ClassJsonAdapterTest.java (16 issues)
+
+    ⚪ [info] L75: Class "BasePizza" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L96: Class "BaseAbcde" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L182: Class "BaseA" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L186: Class "ExtendsBaseA" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L205: Class "NameCollision" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 11 more
+
+  ─── moshi-adapters/src/test/java/com/squareup/moshi/adapters/PolymorphicJsonAdapterFactoryTest.java (1 issues)
+
+    ⚪ [info] L511: Class "MessageWithType" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi-kotlin/src/main/java/com/squareup/moshi/kotlin/reflect/Invokable.kt (2 issues)
+
+    ⚪ [info] L14: Class "Invokable" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L14: Interface "Invokable" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi-kotlin-codegen/src/main/java/com/squareup/moshi/kotlin/codegen/api/AdapterGenerator.kt (10 issues)
+
+    🟡 [warning] L47: Symbol "Type" is imported from multiple modules: "java.lang.reflect", "org.objectweb.asm". This may indicate a context window inconsistency.
+    🟡 [warning] L339: Function has nesting depth of 5 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L339: Function has 295 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L339: Function has cyclomatic complexity of 50 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L851: Class "PropertyComponent" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 5 more
+
+  ─── moshi-kotlin-codegen/src/main/java/com/squareup/moshi/kotlin/codegen/api/TypeRenderer.kt (3 issues)
+
+    🟡 [warning] L43: Function has cyclomatic complexity of 17 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L40: Class "TypeRenderer" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L40: Class "TypeRenderer" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi-kotlin-codegen/src/main/java/com/squareup/moshi/kotlin/codegen/api/kotlintypes.kt (6 issues)
+
+    🟡 [warning] L201: Function "deepCopy" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L209: Function "deepCopy" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L230: Function "deepCopy" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L98: Function has cyclomatic complexity of 16 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L239: Class "TypeVariableResolver" is defined but never used and not exported. This may indicate a context window issue.
+    ... and 1 more
+
+  ─── moshi-kotlin-tests/codegen-only/src/test/kotlin/com/squareup/moshi/kotlin/codegen/CompileOnlyTests.kt (2 issues)
+
+    ⚪ [info] L52: Class "MismatchParentAndNestedClassVisibility" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L52: Class "MismatchParentAndNestedClassVisibility" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── moshi/src/test/java/com/squareup/moshi/internal/KotlinReflectTypesTest.kt (1 issues)
+
+    🟡 [warning] L34: Symbol "javaType" is imported from multiple modules: "com.squareup.moshi.internal", "kotlin.reflect". This may indicate a context window inconsistency.
+
+  ─── moshi/src/main/java/com/squareup/moshi/-JsonUtf8Writer.kt (6 issues)
+
+    🟡 [warning] L263: Function "close" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L167: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L175: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L184: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L198: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    ... and 1 more
+
+  ─── moshi/src/main/java/com/squareup/moshi/-JsonValueReader.kt (3 issues)
+
+    🟡 [warning] L354: Function "require" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L239: Function has nesting depth of 5 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L261: Function has nesting depth of 5 (max: 4). Consider early returns or extracting helper functions.
+
+  ─── moshi/src/main/java/com/squareup/moshi/-JsonValueWriter.kt (5 issues)
+
+    🟡 [warning] L135: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L142: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L149: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L167: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L177: Function "value" is defined 6 times in the same scope. This likely indicates an AI context window issue.
+
+  ─── moshi/src/main/java/com/squareup/moshi/-MoshiKotlinExtensions.kt (1 issues)
+
+    🟡 [warning] L41: Function "adapter" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+
+  ─── moshi/src/main/java/com/squareup/moshi/-MoshiKotlinTypesExtensions.kt (4 issues)
+
+    🟡 [warning] L50: Function "subtypeOf" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L68: Function "supertypeOf" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L80: Function "asArrayType" is defined 3 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L83: Function "asArrayType" is defined 3 times in the same scope. This likely indicates an AI context window issue.
+
+  ─── moshi/src/main/java/com/squareup/moshi/JsonWriter.kt (6 issues)
+
+    🟡 [warning] L299: Function "value" is defined 7 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L306: Function "value" is defined 7 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L315: Function "value" is defined 7 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L322: Function "value" is defined 7 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L331: Function "value" is defined 7 times in the same scope. This likely indicates an AI context window issue.
+    ... and 1 more
+
+  ─── moshi/src/main/java/com/squareup/moshi/Moshi.kt (8 issues)
+
+    🟡 [warning] L58: Function "adapter" is defined 8 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L61: Function "adapter" is defined 8 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L65: Function "adapter" is defined 8 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L82: Function "adapter" is defined 8 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L90: Function "adapter" is defined 8 times in the same scope. This likely indicates an AI context window issue.
+    ... and 3 more
+
+  ─── moshi/src/main/java/com/squareup/moshi/Types.kt (2 issues)
+
+    🟡 [warning] L66: Function "generatedJsonAdapterName" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L215: Function has cyclomatic complexity of 25 (max: 15). Consider simplifying the logic.
+
+  ─── moshi/src/test/java/com/squareup/moshi/TestUtil.java (1 issues)
+
+    🟡 [warning] L35: Function "repeat" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+
+  ─── moshi/src/test/java/com/squareup/moshi/internal/LinkedHashTreeMapTest.java (1 issues)
+
+    🟡 [warning] L258: Function "node" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+
+  ─── moshi-kotlin/src/main/java/com/squareup/moshi/kotlin/reflect/KotlinJsonAdapterFactory.kt (5 issues)
+
+    🟡 [warning] L388: Function "valueEquals" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L405: Function "valueEquals" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L417: Function "valueEquals" is defined 4 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L215: Function has 127 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L215: Function has cyclomatic complexity of 25 (max: 15). Consider simplifying the logic.
+
+  ─── moshi-kotlin-codegen/src/main/java/com/squareup/moshi/kotlin/codegen/ksp/KspUtil.kt (1 issues)
+
+    🟡 [warning] L145: Function "check" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+
+  ─── moshi-kotlin-codegen/src/main/java/com/squareup/moshi/kotlin/codegen/ksp/shadedUtil.kt (3 issues)
+
+    🟡 [warning] L268: Function "asArray" is defined 2 times in the same scope. This likely indicates an AI context window issue.
+    🟡 [warning] L60: Function has cyclomatic complexity of 23 (max: 15). Consider simplifying the logic.
+    🟡 [warning] L168: Function has cyclomatic complexity of 17 (max: 15). Consider simplifying the logic.
+
+  ─── moshi-adapters/src/test/java/com/squareup/moshi/adapters/Rfc3339DateJsonAdapterTest.java (1 issues)
+
+    🟡 [warning] L107: Function has 8 parameters (max: 5). Consider using an options object or builder pattern.
+
+  ─── moshi/src/test/java/com/squareup/moshi/JsonUtf8ReaderTest.java (1 issues)
+
+    🟡 [warning] L1359: Function has nesting depth of 13 (max: 4). Consider early returns or extracting helper functions.
+
+  ─── moshi-adapters/src/main/java/com/squareup/moshi/adapters/Iso8601Utils.kt (3 issues)
+
+    🟡 [warning] L79: Function has nesting depth of 6 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L79: Function has 129 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L79: Function has cyclomatic complexity of 23 (max: 15). Consider simplifying the logic.
+
+  ─── moshi/src/main/java/com/squareup/moshi/-JsonUtf8Reader.kt (4 issues)
+
+    🟡 [warning] L163: Function has 149 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L163: Function has cyclomatic complexity of 53 (max: 15). Consider simplifying the logic.
+    🟡 [warning] L401: Function has cyclomatic complexity of 38 (max: 15). Consider simplifying the logic.
+    🟡 [warning] L1160: Function has cyclomatic complexity of 17 (max: 15). Consider simplifying the logic.
+
+  ─── moshi/src/test/java/com/squareup/moshi/JsonCodecFactory.java (1 issues)
+
+    🟡 [warning] L30: Function has 129 lines of code (max: 100). Consider breaking it into smaller functions.
+
+  ─── moshi-kotlin-codegen/src/main/java/com/squareup/moshi/kotlin/codegen/ksp/TargetTypes.kt (1 issues)
+
+    🟡 [warning] L59: Function has 104 lines of code (max: 100). Consider breaking it into smaller functions.
+
+  ─── moshi-kotlin-codegen/src/test/java/com/squareup/moshi/kotlin/codegen/ksp/JsonClassSymbolProcessorTest.kt (1 issues)
+
+    🟡 [warning] L649: Function has 243 lines of code (max: 100). Consider breaking it into smaller functions.
+
+  ─── moshi/src/main/java/com/squareup/moshi/internal/AdapterMethodsFactory.kt (1 issues)
+
+    🟡 [warning] L36: Function has cyclomatic complexity of 21 (max: 15). Consider simplifying the logic.
+
+  ─── moshi/src/main/java/com/squareup/moshi/internal/ArrayJsonAdapter.kt (1 issues)
+
+    🟡 [warning] L47: Function has cyclomatic complexity of 20 (max: 15). Consider simplifying the logic.
+
+  ─── moshi/src/main/java/com/squareup/moshi/internal/StandardJsonAdapters.kt (1 issues)
+
+    🟡 [warning] L30: Function has cyclomatic complexity of 22 (max: 15). Consider simplifying the logic.
+
+  ─── moshi-kotlin/src/main/java/com/squareup/moshi/kotlin/reflect/JvmDescriptors.kt (1 issues)
+
+    🟡 [warning] L49: Function has cyclomatic complexity of 18 (max: 15). Consider simplifying the logic.
+
+──────────────────────────────────────────────────────────────
+  Generated at: 2026-03-10T19:24:25.602Z

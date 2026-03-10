@@ -1,0 +1,28 @@
+{
+  "name": "chi",
+  "language": "Go",
+  "files": 74,
+  "codeUnits": 483,
+  "issues": 130,
+  "score": 70,
+  "grade": "C",
+  "byCategory": {
+    "ai-faithfulness": 0,
+    "code-freshness": 0,
+    "context-coherence": 113,
+    "implementation": 17
+  },
+  "bySeverity": {
+    "error": 2,
+    "warning": 24,
+    "info": 104
+  },
+  "durationMs": 501,
+  "languages": [
+    "go"
+  ],
+  "error": null,
+  "scannedAt": "2026-03-10T19:24:22.388Z",
+  "sla": "L1",
+  "engine": "V4"
+}

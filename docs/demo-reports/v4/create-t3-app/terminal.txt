@@ -1,0 +1,252 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║           Open Code Review V4 — Quality Report              ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Project: /tmp/ocr-demo/create-t3-app
+  Date: 2026-03-10T19:24:05.427Z
+  SLA: L1 Fast — Structural analysis only
+
+  📊 76 issues found in 182 files
+
+  Overall Score: 80/100  🔵 B
+  Threshold: 70
+  Status: ✅ PASSED
+
+  Files Scanned: 182
+  Languages: typescript
+  Duration: 658ms
+
+  ── Stage Timing ──
+    Discovery:  16ms
+    Parsing:    555ms
+    Detection:  56ms
+
+  ── Scoring Dimensions ──
+
+  AI Faithfulness           ████████████████████ 35/35 (100%)
+  Code Freshness            ████████████████████ 25/25 (100%)
+  Context Coherence         ████████████████████ 20/20 (100%)
+  Implementation Quality    ░░░░░░░░░░░░░░░░░░░░ 0/20 (0%)
+
+  ── Issues by Category ──
+
+    Context Coherence: 40
+    Implementation Quality: 36
+
+  ── File Details ──
+
+  ─── .github/scripts/generate-matrix.js (2 issues)
+
+    ⚪ [info] L36: Function "isValid" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L36: Function "isValid" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/src/cli/index.ts (4 issues)
+
+    🟡 [warning] L78: Function has 312 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L78: Function has cyclomatic complexity of 52 (max: 15). Consider simplifying the logic.
+    ⚪ [info] L18: Interface "CliFlags" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L48: Interface "CliResults" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/src/helpers/createProject.ts (1 issues)
+
+    ⚪ [info] L19: Interface "CreateProjectOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/src/helpers/installPackages.ts (1 issues)
+
+    ⚪ [info] L10: Type "InstallPackagesOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/src/helpers/selectBoilerplate.ts (7 issues)
+
+    🟡 [warning] L11: Function has nesting depth of 9 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L72: Function has nesting depth of 9 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L111: Function has nesting depth of 9 (max: 4). Consider early returns or extracting helper functions.
+    🟡 [warning] L11: Function has cyclomatic complexity of 23 (max: 15). Consider simplifying the logic.
+    🟡 [warning] L72: Function has cyclomatic complexity of 26 (max: 15). Consider simplifying the logic.
+    ... and 2 more
+
+  ─── cli/src/index.ts (1 issues)
+
+    ⚪ [info] L25: Type "CT3APackageJSON" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/src/utils/renderVersionWarning.ts (1 issues)
+
+    ⚪ [info] L41: Interface "DistTagsBody" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/app/api/trpc/[trpc]/route.ts (1 issues)
+
+    ⚪ [info] L18: Function "handler" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/base.tsx (1 issues)
+
+    ⚪ [info] L10: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-auth-trpc-tw.tsx (1 issues)
+
+    ⚪ [info] L14: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-auth-trpc.tsx (1 issues)
+
+    ⚪ [info] L14: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-auth-tw.tsx (1 issues)
+
+    ⚪ [info] L12: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-auth.tsx (1 issues)
+
+    ⚪ [info] L12: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-better-auth-trpc-tw.tsx (1 issues)
+
+    ⚪ [info] L12: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-better-auth-trpc.tsx (1 issues)
+
+    ⚪ [info] L12: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-trpc-tw.tsx (1 issues)
+
+    ⚪ [info] L12: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-trpc.tsx (1 issues)
+
+    ⚪ [info] L12: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/_app/with-tw.tsx (1 issues)
+
+    ⚪ [info] L10: Function "MyApp" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/index/with-auth-trpc-tw.tsx (2 issues)
+
+    ⚪ [info] L58: Function "AuthShowcase" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L58: Function "AuthShowcase" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/pages/index/with-auth-trpc.tsx (2 issues)
+
+    ⚪ [info] L59: Function "AuthShowcase" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L59: Function "AuthShowcase" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/routers/post/base.ts (1 issues)
+
+    ⚪ [info] L6: Interface "Post" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/trpc-pages/base.ts (2 issues)
+
+    🟡 [warning] L103: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+    ⚪ [info] L23: Type "CreateContextOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/trpc-pages/with-auth-db.ts (2 issues)
+
+    🟡 [warning] L119: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+    ⚪ [info] L27: Interface "CreateContextOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/trpc-pages/with-auth.ts (2 issues)
+
+    🟡 [warning] L117: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+    ⚪ [info] L25: Interface "CreateContextOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/trpc-pages/with-better-auth-db.ts (2 issues)
+
+    🟡 [warning] L127: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+    ⚪ [info] L27: Interface "CreateContextOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/trpc-pages/with-better-auth.ts (2 issues)
+
+    🟡 [warning] L125: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+    ⚪ [info] L26: Interface "CreateContextOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/template/extras/src/server/api/trpc-pages/with-db.ts (2 issues)
+
+    🟡 [warning] L106: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+    ⚪ [info] L24: Type "CreateContextOptions" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── www/src/components/docs/breadCrumbs.tsx (1 issues)
+
+    ⚪ [info] L6: Type "SlugType" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── www/src/components/docs/callout.tsx (1 issues)
+
+    ⚪ [info] L10: Function "getEmoji" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── www/src/components/docs/companyList.tsx (1 issues)
+
+    ⚪ [info] L1: Interface "Company" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── www/src/components/docs/openSourceAppList.tsx (1 issues)
+
+    ⚪ [info] L1: Interface "App" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── www/src/components/navigation/LanguageSelect.tsx (2 issues)
+
+    ⚪ [info] L8: Interface "LanguageSelectProps" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L13: Function "handleSelect" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── www/src/components/navigation/OnThisPageLinks.tsx (2 issues)
+
+    ⚪ [info] L6: Interface "OnThisPageLinksProps" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L86: HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.
+
+  ─── www/src/components/openGraph.tsx (2 issues)
+
+    ⚪ [info] L1: Interface "OpenGraphProps" is defined but never used and not exported. This may indicate a context window issue.
+    ⚪ [info] L94: HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.
+
+  ─── www/src/utils/fetchGithub.ts (1 issues)
+
+    ⚪ [info] L3: Interface "Options" is defined but never used and not exported. This may indicate a context window issue.
+
+  ─── cli/src/installers/envVars.ts (7 issues)
+
+    🔴 [error] L69: Possible hardcoded password detected. Use environment variables or a secrets manager instead.
+    🔴 [error] L73: Possible hardcoded password detected. Use environment variables or a secrets manager instead.
+    🔴 [error] L69: Possible hardcoded password detected. Use environment variables or a secrets manager instead.
+    🔴 [error] L73: Possible hardcoded password detected. Use environment variables or a secrets manager instead.
+    🟡 [warning] L80: Function has 6 parameters (max: 5). Consider using an options object or builder pattern.
+    ... and 2 more
+
+  ─── cli/src/installers/betterAuth.ts (2 issues)
+
+    🟡 [warning] L9: Function has 107 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L9: Function has cyclomatic complexity of 19 (max: 15). Consider simplifying the logic.
+
+  ─── cli/src/installers/trpc.ts (2 issues)
+
+    🟡 [warning] L8: Function has 114 lines of code (max: 100). Consider breaking it into smaller functions.
+    🟡 [warning] L8: Function has cyclomatic complexity of 23 (max: 15). Consider simplifying the logic.
+
+  ─── cli/template/extras/src/server/api/trpc-app/base.ts (1 issues)
+
+    🟡 [warning] L84: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+
+  ─── cli/template/extras/src/server/api/trpc-app/with-auth-db.ts (1 issues)
+
+    🟡 [warning] L92: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+
+  ─── cli/template/extras/src/server/api/trpc-app/with-auth.ts (1 issues)
+
+    🟡 [warning] L89: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+
+  ─── cli/template/extras/src/server/api/trpc-app/with-better-auth-db.ts (1 issues)
+
+    🟡 [warning] L93: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+
+  ─── cli/template/extras/src/server/api/trpc-app/with-better-auth.ts (1 issues)
+
+    🟡 [warning] L90: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+
+  ─── cli/template/extras/src/server/api/trpc-app/with-db.ts (1 issues)
+
+    🟡 [warning] L87: Math.random() is not cryptographically secure. Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive operations.
+
+  ─── www/src/components/landingPage/ClipboardSelect.tsx (2 issues)
+
+    ⚪ [info] L48: HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.
+    ⚪ [info] L66: HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.
+
+  ─── www/src/config.ts (1 issues)
+
+    🔴 [error] L52: Possible hardcoded API key detected. Use environment variables or a secrets manager instead.
+
+──────────────────────────────────────────────────────────────
+  Generated at: 2026-03-10T19:24:05.429Z
