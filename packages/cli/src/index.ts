@@ -15,6 +15,8 @@
  *   npx open-code-review login
  *   npx open-code-review config show
  *   npx open-code-review config set license AICV-XXXX
+ *   npx open-code-review config set cloud-url https://your-cloud.com
+ *   npx open-code-review config set api-key your-api-key
  *   npx open-code-review init
  *
  * @since 0.4.0
@@ -26,6 +28,7 @@ import { homedir } from 'node:os';
 import { createInterface } from 'node:readline';
 import { execSync } from 'node:child_process';
 import { glob } from 'glob';
+import { ConfigManager } from './utils/config-manager';
 import {
   // V3 detectors (legacy)
   HallucinationDetector,
@@ -824,6 +827,24 @@ async function commandConfig(subcommand?: string, key?: string, value?: string):
         console.log('  Cache:       (empty)');
       }
 
+      // Show cloud config
+      const configManager = new ConfigManager();
+      const cloudUrl = configManager.get('cloudUrl');
+      const apiKey = configManager.get('apiKey');
+      
+      if (cloudUrl) {
+        console.log(`  Cloud URL:   ${cloudUrl}`);
+      } else {
+        console.log('  Cloud URL:   (not set)');
+      }
+      
+      if (apiKey) {
+        const maskedKey = apiKey.replace(/^(.{8}).*(.{4})$/, '$1...$2');
+        console.log(`  API Key:     ${maskedKey}`);
+      } else {
+        console.log('  API Key:     (not set)');
+      }
+
       console.log('');
       break;
     }
@@ -831,7 +852,7 @@ async function commandConfig(subcommand?: string, key?: string, value?: string):
     case 'set': {
       if (!key) {
         console.error('Usage: open-code-review config set <key> <value>');
-        console.error('Available keys: license');
+        console.error('Available keys: license, cloud-url, api-key');
         process.exit(1);
       }
 
@@ -851,9 +872,29 @@ async function commandConfig(subcommand?: string, key?: string, value?: string):
           console.log('✓ License key saved to ~/.aicv/license');
           break;
         }
+        case 'cloud-url': {
+          if (!value) {
+            console.error('Usage: open-code-review config set cloud-url https://your-cloud.com');
+            process.exit(1);
+          }
+          const configManager = new ConfigManager();
+          configManager.set('cloudUrl', value);
+          console.log(`✓ Cloud URL set to: ${value}`);
+          break;
+        }
+        case 'api-key': {
+          if (!value) {
+            console.error('Usage: open-code-review config set api-key your-api-key');
+            process.exit(1);
+          }
+          const configManager = new ConfigManager();
+          configManager.set('apiKey', value);
+          console.log('✓ API key saved');
+          break;
+        }
         default:
           console.error(`Unknown config key: ${key}`);
-          console.error('Available keys: license');
+          console.error('Available keys: license, cloud-url, api-key');
           process.exit(1);
       }
       break;
