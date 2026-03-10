@@ -291,3 +291,32 @@ export {
 } from './config/v4-config.js';
 
 export type { V4Config, LoadV4ConfigOptions } from './config/v4-config.js';
+
+// ─── V4: AI Pipeline ───
+
+export {
+  AIScanPipeline,
+  LocalEmbeddingProvider,
+  OpenAIEmbeddingProvider,
+  OllamaLLMProvider,
+  OpenAILLMProvider,
+  AnthropicLLMProvider,
+  cosineSimilarity,
+  findTopMatches,
+  tokenize,
+  DEFECT_PATTERNS,
+  getPatternsByCategory,
+  getPatternsForLanguage,
+  getPatternText,
+} from './ai/v4/index.js';
+
+export type {
+  EmbeddingProvider,
+  LLMProvider,
+  LLMOptions,
+  LLMResponse,
+  AIConfig,
+  ScanStageResult,
+  AIPipelineResult,
+  DefectPattern,
+} from './ai/v4/index.js';
