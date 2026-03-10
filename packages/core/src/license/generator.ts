@@ -10,6 +10,8 @@
  * @since 0.3.0
  */
 
+import { randomInt } from 'node:crypto';
+
 /**
  * Character set for license key generation.
  * Excludes I, O, 0, 1, L to avoid confusion in manual entry.
@@ -52,7 +54,7 @@ export function generateLicenseKey(): string {
   for (let g = 0; g < GROUP_COUNT; g++) {
     let part = '';
     for (let i = 0; i < GROUP_SIZE; i++) {
-      part += LICENSE_CHARS[Math.floor(Math.random() * LICENSE_CHARS.length)];
+      part += LICENSE_CHARS[randomInt(LICENSE_CHARS.length)];
     }
     parts.push(part);
   }
