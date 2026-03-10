@@ -18,7 +18,8 @@ import type { V4Detector, DetectorResult, DetectorCategory, DetectorContext } fr
 
 // ─── Default thresholds ────────────────────────────────────────────
 
-interface OverEngineeringThresholds {
+/** Configurable thresholds for over-engineering detection. */
+export interface OverEngineeringThresholds {
   maxParams: number;
   maxNesting: number;
   maxFunctionLOC: number;

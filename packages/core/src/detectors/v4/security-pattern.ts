@@ -23,7 +23,8 @@ import type { V4Detector, DetectorResult, DetectorCategory, DetectorContext } fr
 
 // ─── Security Pattern Definition ───────────────────────────────────
 
-interface SecurityPattern {
+/** Security pattern definition for detecting vulnerabilities in code. */
+export interface SecurityPattern {
   /** Unique ID for the pattern */
   id: string;
   /** Regex to match in source code */

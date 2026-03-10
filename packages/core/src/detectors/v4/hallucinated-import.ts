@@ -35,7 +35,8 @@ const BUILTIN_SETS: Record<string, Set<string>> = {
 
 // ─── Import occurrence tracking ────────────────────────────────────
 
-interface ImportOccurrence {
+/** Tracks an import occurrence for hallucination detection. */
+export interface ImportOccurrence {
   file: string;
   line: number;
   raw: string;

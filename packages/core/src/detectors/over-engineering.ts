@@ -20,7 +20,8 @@ import { AIDefectCategory } from '../types.js';
 
 // ─── Types ───
 
-interface FunctionInfo {
+/** Extracted function metadata for over-engineering analysis. */
+export interface FunctionInfo {
   name: string;
   startLine: number;
   endLine: number;

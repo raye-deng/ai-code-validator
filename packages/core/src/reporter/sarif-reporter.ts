@@ -13,13 +13,15 @@ import type { ReportData } from './types.js';
 
 // ─── SARIF Types ───────────────────────────────────────────────────
 
-interface SARIFResult {
+/** Top-level SARIF v2.1.0 result document. */
+export interface SARIFResult {
   $schema: string;
   version: string;
   runs: SARIFRun[];
 }
 
-interface SARIFRun {
+/** A single SARIF run containing tool info and results. */
+export interface SARIFRun {
   tool: {
     driver: {
       name: string;
@@ -31,7 +33,8 @@ interface SARIFRun {
   results: SARIFResultEntry[];
 }
 
-interface SARIFRule {
+/** SARIF rule definition. */
+export interface SARIFRule {
   id: string;
   name: string;
   shortDescription: { text: string };
@@ -40,7 +43,8 @@ interface SARIFRule {
   };
 }
 
-interface SARIFResultEntry {
+/** A single SARIF result entry referencing a rule and source location. */
+export interface SARIFResultEntry {
   ruleId: string;
   level: string;
   message: { text: string };

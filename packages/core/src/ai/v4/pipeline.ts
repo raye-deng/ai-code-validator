@@ -33,7 +33,8 @@ import {
 
 // ─── LLM Response Parser ───────────────────────────────────────────
 
-interface ParsedLLMIssue {
+/** Structured issue parsed from LLM JSON response. */
+export interface ParsedLLMIssue {
   line: number;
   severity: 'error' | 'warning' | 'info';
   message: string;

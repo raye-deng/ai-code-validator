@@ -20,7 +20,8 @@ import { AIDefectCategory } from '../types.js';
 
 // ─── Pattern Definitions ───
 
-interface SecurityPattern {
+/** Security pattern definition for detecting vulnerabilities in code. */
+export interface SecurityPattern {
   type: string;
   regex: RegExp;
   severity: Severity;

@@ -110,45 +110,45 @@ export class OllamaProvider implements AIProvider {
   // ─── Response Parsing ────────────────────────────────────────────
 
   /**
+   * Attempt to parse a JSON string into an issues array.
+   * Returns null if parsing fails or the structure is invalid.
+   */
+  private tryParseIssuesJSON(json: string): AIRawIssue[] | null {
+    try {
+      const parsed = JSON.parse(json) as { issues?: AIRawIssue[] };
+      if (!parsed.issues || !Array.isArray(parsed.issues)) return null;
+      return parsed.issues;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Parse the Ollama JSON response into UnifiedIssue array.
    * Handles malformed JSON gracefully.
    */
   private parseResponse(response: string, request: AIAnalysisRequest): UnifiedIssue[] {
-    try {
-      const parsed = JSON.parse(response) as { issues?: AIRawIssue[] };
-      if (!parsed.issues || !Array.isArray(parsed.issues)) {
-        return [];
-      }
-
-      // Build a set of valid file paths from the request
+    // First attempt: parse the whole response as JSON
+    const directIssues = this.tryParseIssuesJSON(response);
+    if (directIssues) {
       const validFiles = new Set(request.files.map((f) => f.path));
-
-      return parsed.issues
+      return directIssues
         .filter(
           (raw) =>
-            raw.file &&
-            raw.line &&
-            raw.message &&
-            raw.category &&
-            raw.severity &&
+            raw.file && raw.line && raw.message && raw.category && raw.severity &&
             validFiles.has(raw.file),
         )
         .map((raw, index) => this.rawToUnifiedIssue(raw, index));
-    } catch {
-      // Try to extract JSON from markdown code blocks
-      const jsonMatch = response.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[1]) as { issues?: AIRawIssue[] };
-          if (parsed.issues && Array.isArray(parsed.issues)) {
-            return parsed.issues.map((raw, index) => this.rawToUnifiedIssue(raw, index));
-          }
-        } catch {
-          // Give up
-        }
-      }
-      return [];
     }
+
+    // Fallback: extract JSON from markdown code blocks
+    const jsonMatch = response.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (!jsonMatch) return [];
+
+    const blockIssues = this.tryParseIssuesJSON(jsonMatch[1]);
+    if (!blockIssues) return [];
+
+    return blockIssues.map((raw, index) => this.rawToUnifiedIssue(raw, index));
   }
 
   /**

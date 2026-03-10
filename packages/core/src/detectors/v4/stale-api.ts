@@ -20,7 +20,8 @@ import type { V4Detector, DetectorResult, DetectorCategory, DetectorContext } fr
 
 // ─── Deprecated Pattern Definition ────────────────────────────────
 
-interface DeprecatedPattern {
+/** Definition of a deprecated API pattern for detection. */
+export interface DeprecatedPattern {
   /** Pattern to match in call expressions (callee string) */
   pattern: string | RegExp;
   /** What replaces it */

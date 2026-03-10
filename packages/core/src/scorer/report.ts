@@ -28,8 +28,8 @@ import type { Grade } from '../types.js';
 /** Output format type */
 export type ReportFormat = 'terminal' | 'json' | 'markdown' | 'gitlab-report';
 
-/** GitLab Code Quality issue format */
-interface GitLabCodeQualityIssue {
+/** GitLab Code Quality issue format for CI/CD integration. */
+export interface GitLabCodeQualityIssue {
   description: string;
   check_name: string;
   fingerprint: string;
