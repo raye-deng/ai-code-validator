@@ -3,7 +3,7 @@
 > The first CI/CD quality gate built for AI-generated code.
 > Free. Self-hostable. Not another linter.
 
-[![npm](https://img.shields.io/npm/v/open-code-review-cli)](https://www.npmjs.com/package/open-code-review-cli)
+[![npm](https://img.shields.io/npm/v/@opencodereview/cli)](https://www.npmjs.com/package/@opencodereview/cli)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![CI](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml/badge.svg)](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml)
 
@@ -84,7 +84,7 @@ Also available as HTML: `ocr scan src/ --format html -o report.html`
 
 ```bash
 # Install
-npm install -g open-code-review-cli
+npm install -g @opencodereview/cli
 
 # Scan your project (L1 — fast, no AI needed)
 ocr scan src/ --sla L1
@@ -130,7 +130,7 @@ L2: AI Deep Analysis (Embedding + LLM)
 ```yaml
 code-review:
   script:
-    - npx open-code-review-cli scan src/ --sla L1 --threshold 60 --format json --output ocr-report.json
+    - npx @opencodereview/cli scan src/ --sla L1 --threshold 60 --format json --output ocr-report.json
   artifacts:
     reports:
       codequality: ocr-report.json
@@ -165,8 +165,8 @@ ai:
 
 ```
 packages/
-  core/              # Detection engine + scoring (open-code-review-core)
-  cli/               # CLI tool — ocr command (open-code-review-cli)
+  core/              # Detection engine + scoring (@opencodereview/core)
+  cli/               # CLI tool — ocr command (@opencodereview/cli)
   github-action/     # GitHub Action wrapper
 ```
 

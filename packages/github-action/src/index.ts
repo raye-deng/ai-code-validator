@@ -20,14 +20,14 @@ import {
   parseDiff,
   filterByDiff,
   getScannableFiles,
-} from 'open-code-review-core';
+} from '@opencodereview/core';
 import type {
   V4ScanResult,
   V4ScoreResult,
   SLALevel,
   V4DetectorResult,
   DiffResult,
-} from 'open-code-review-core';
+} from '@opencodereview/core';
 
 // ─── Constants ─────────────────────────────────────────────────────
 

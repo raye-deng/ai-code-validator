@@ -1,10 +1,10 @@
 {
-  "name": "open-code-review-cli",
-  "version": "1.9.1",
+  "name": "@opencodereview/cli",
+  "version": "2.0.0",
   "description": "CLI tool for validating AI-generated code quality",
   "type": "module",
   "bin": {
-    "open-code-review": "./dist/index.js",
+    "opencodereview": "./dist/index.js",
     "ocr": "./dist/index.js"
   },
   "main": "./dist/index.js",
@@ -28,8 +28,8 @@
   "author": "Raye Deng <fengsen.deng@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "open-code-review-core": "workspace:^",
-    "glob": "^10.3.0"
+    "glob": "^10.3.0",
+    "@opencodereview/core": "workspace:^"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

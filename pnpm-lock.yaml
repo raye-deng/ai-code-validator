@@ -23,12 +23,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@opencodereview/core':
+        specifier: workspace:^
+        version: link:../core
       glob:
         specifier: ^10.3.0
         version: 10.5.0
-      open-code-review-core:
-        specifier: workspace:^
-        version: link:../core
     devDependencies:
       tsx:
         specifier: ^4.7.0
@@ -81,12 +81,12 @@ importers:
       '@actions/github':
         specifier: ^6.0.0
         version: 6.0.1
+      '@opencodereview/core':
+        specifier: workspace:*
+        version: link:../core
       glob:
         specifier: ^10.3.0
         version: 10.5.0
-      open-code-review-core:
-        specifier: workspace:*
-        version: link:../core
     devDependencies:
       '@vercel/ncc':
         specifier: ^0.38.4
