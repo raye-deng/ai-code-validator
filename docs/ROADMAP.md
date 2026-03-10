@@ -89,9 +89,9 @@
 | 3.5 | Portal: /login + /register | `apps/web/src/app/(auth)/` | ⬜ |
 | 3.6 | Portal: /dashboard + /dashboard/license | `apps/web/src/app/dashboard/` | ⬜ |
 | 3.7 | License API (CF Worker 或 Next API) | `apps/web/src/app/api/license/` | ⬜ |
-| 3.8 | Java LanguageAdapter | `packages/core/src/languages/java/` | ⬜ |
-| 3.9 | Go LanguageAdapter | `packages/core/src/languages/go/` | ⬜ |
-| 3.10 | Maven Central + pkg.go.dev 验证 | 各语言 `package-verifier.ts` | ⬜ |
+| 3.8 | Java LanguageAdapter | `packages/core/src/languages/java/` | ✅ |
+| 3.9 | Go LanguageAdapter | `packages/core/src/languages/go/` | ✅ |
+| 3.10 | Maven Central + pkg.go.dev 验证 | 各语言 `package-verifier.ts` | ✅ |
 
 ### 验收标准
 - [ ] Portal 可访问，GitHub OAuth 登录 → 自动获取 License
