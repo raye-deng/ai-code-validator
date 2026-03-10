@@ -20,3 +20,4 @@ export { LanguageRegistry } from './registry.js';
 
 // Adapters
 export { TypeScriptAdapter } from './typescript/index.js';
+export { PythonAdapter, PYTHON_BUILTIN_MODULES, PYTHON_COMMON_PACKAGES } from './python/index.js';

@@ -1,0 +1,162 @@
+[
+  {
+    "api": "os.popen",
+    "pattern": "os\\.popen\\(",
+    "replacement": "subprocess.run()",
+    "deprecated_since": "Python 3.0",
+    "severity": "high",
+    "reason": "os.popen is unsafe and deprecated; use subprocess module instead"
+  },
+  {
+    "api": "imp.find_module",
+    "pattern": "imp\\.",
+    "replacement": "importlib",
+    "deprecated_since": "Python 3.4",
+    "severity": "high",
+    "reason": "The imp module is deprecated in favor of importlib"
+  },
+  {
+    "api": "optparse",
+    "pattern": "from optparse|import optparse",
+    "replacement": "argparse",
+    "deprecated_since": "Python 3.2",
+    "severity": "medium",
+    "reason": "optparse is deprecated; use argparse instead"
+  },
+  {
+    "api": "cgi",
+    "pattern": "import cgi|from cgi",
+    "replacement": "urllib.parse",
+    "deprecated_since": "Python 3.11",
+    "severity": "high",
+    "reason": "The cgi module is deprecated and will be removed in Python 3.13"
+  },
+  {
+    "api": "asyncio.coroutine",
+    "pattern": "@asyncio\\.coroutine",
+    "replacement": "async def",
+    "deprecated_since": "Python 3.8",
+    "severity": "high",
+    "reason": "Generator-based coroutines are deprecated; use async/await syntax"
+  },
+  {
+    "api": "collections.MutableMapping",
+    "pattern": "collections\\.Mutable",
+    "replacement": "collections.abc.MutableMapping",
+    "deprecated_since": "Python 3.3",
+    "severity": "medium",
+    "reason": "ABCs moved to collections.abc; direct access from collections is deprecated"
+  },
+  {
+    "api": "typing.Dict",
+    "pattern": "typing\\.Dict|from typing import.*\\bDict\\b",
+    "replacement": "dict (builtin)",
+    "deprecated_since": "Python 3.9",
+    "severity": "low",
+    "reason": "Use built-in dict for type hints instead of typing.Dict"
+  },
+  {
+    "api": "typing.List",
+    "pattern": "typing\\.List|from typing import.*\\bList\\b",
+    "replacement": "list (builtin)",
+    "deprecated_since": "Python 3.9",
+    "severity": "low",
+    "reason": "Use built-in list for type hints instead of typing.List"
+  },
+  {
+    "api": "typing.Tuple",
+    "pattern": "typing\\.Tuple|from typing import.*\\bTuple\\b",
+    "replacement": "tuple (builtin)",
+    "deprecated_since": "Python 3.9",
+    "severity": "low",
+    "reason": "Use built-in tuple for type hints instead of typing.Tuple"
+  },
+  {
+    "api": "typing.Optional",
+    "pattern": "typing\\.Optional|from typing import.*\\bOptional\\b",
+    "replacement": "X | None (union syntax)",
+    "deprecated_since": "Python 3.10",
+    "severity": "info",
+    "reason": "Use X | None union syntax instead of Optional[X]"
+  },
+  {
+    "api": "unittest.makeSuite",
+    "pattern": "makeSuite\\(",
+    "replacement": "TestLoader.loadTestsFromTestCase()",
+    "deprecated_since": "Python 3.2",
+    "severity": "medium",
+    "reason": "unittest.makeSuite is deprecated; use TestLoader methods"
+  },
+  {
+    "api": "platform.dist",
+    "pattern": "platform\\.dist\\(",
+    "replacement": "distro package",
+    "deprecated_since": "Python 3.5",
+    "severity": "high",
+    "reason": "platform.dist() was removed; use the third-party distro package"
+  },
+  {
+    "api": "ssl.wrap_socket",
+    "pattern": "ssl\\.wrap_socket\\(",
+    "replacement": "SSLContext.wrap_socket()",
+    "deprecated_since": "Python 3.7",
+    "severity": "high",
+    "reason": "ssl.wrap_socket is deprecated; use SSLContext.wrap_socket() instead"
+  },
+  {
+    "api": "sys.getdefaultencoding",
+    "pattern": "sys\\.getdefaultencoding",
+    "replacement": "(always utf-8 in Python 3)",
+    "deprecated_since": "Python 3.0",
+    "severity": "low",
+    "reason": "Default encoding is always utf-8 in Python 3; checking is unnecessary"
+  },
+  {
+    "api": "distutils",
+    "pattern": "from distutils|import distutils",
+    "replacement": "setuptools",
+    "deprecated_since": "Python 3.10",
+    "severity": "high",
+    "reason": "distutils is deprecated and removed in Python 3.12; use setuptools"
+  },
+  {
+    "api": "asynchat",
+    "pattern": "import asynchat|from asynchat",
+    "replacement": "asyncio",
+    "deprecated_since": "Python 3.6",
+    "severity": "high",
+    "reason": "asynchat is deprecated; use asyncio instead"
+  },
+  {
+    "api": "asyncore",
+    "pattern": "import asyncore|from asyncore",
+    "replacement": "asyncio",
+    "deprecated_since": "Python 3.6",
+    "severity": "high",
+    "reason": "asyncore is deprecated; use asyncio instead"
+  },
+  {
+    "api": "formatter",
+    "pattern": "import formatter|from formatter",
+    "replacement": "(no direct replacement)",
+    "deprecated_since": "Python 3.4",
+    "severity": "medium",
+    "reason": "The formatter module is deprecated with no direct replacement"
+  },
+  {
+    "api": "pipes.quote",
+    "pattern": "pipes\\.quote|from pipes import",
+    "replacement": "shlex.quote()",
+    "deprecated_since": "Python 3.3",
+    "severity": "medium",
+    "reason": "pipes.quote is deprecated; use shlex.quote() instead"
+  },
+  {
+    "api": "xml.etree.ElementTree.Element.getchildren",
+    "pattern": "\\.getchildren\\(",
+    "replacement": "list(element) or iteration",
+    "deprecated_since": "Python 3.1",
+    "severity": "medium",
+    "reason": "Element.getchildren() is deprecated; iterate directly or use list()"
+  }
+]
