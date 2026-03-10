@@ -2,7 +2,12 @@
  * AI Code Validator — Detector Registry
  *
  * All detectors are registered here and exposed for the scoring engine.
+ *
+ * V3: All detectors implement the unified Detector interface.
+ * Legacy types are still exported for backward compatibility.
  */
+
+// ─── Detectors ───
 
 export { HallucinationDetector } from './hallucination.js';
 export type { HallucinationIssue, HallucinationResult, HallucinationDetectorOptions } from './hallucination.js';

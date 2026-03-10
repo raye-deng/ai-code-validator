@@ -1,5 +1,5 @@
 /**
- * Context Break Detector
+ * Context Break Detector (V3)
  *
  * Detects architectural inconsistencies in AI-generated code:
  * 1. Mixed coding styles (camelCase vs snake_case)
@@ -7,8 +7,21 @@
  * 3. Mixed module systems (import vs require in same file)
  * 4. Inconsistent async patterns (callbacks vs promises vs async/await)
  * 5. Style breaks that indicate context window switches
+ *
+ * Implements the unified Detector interface.
+ *
+ * @since 0.2.0 (original)
+ * @since 0.3.0 (V3 unified interface)
  */
 
+import type { Detector, UnifiedIssue, FileAnalysis, Severity } from '../types.js';
+import { AIDefectCategory } from '../types.js';
+
+// ─── Legacy Types (Backward Compatible) ───
+
+/**
+ * @deprecated Use UnifiedIssue instead. Will be removed in v0.4.0.
+ */
 export interface ContextBreakIssue {
   type:
     | 'naming-inconsistency'
@@ -23,13 +36,17 @@ export interface ContextBreakIssue {
   suggestion?: string;
 }
 
+/**
+ * @deprecated Use UnifiedIssue[] instead. Will be removed in v0.4.0.
+ */
 export interface ContextBreakResult {
   file: string;
   issues: ContextBreakIssue[];
   score: number;
 }
 
-/** Detect mixed naming conventions */
+// ─── Internal Detection Functions ───
+
 function detectNamingInconsistency(lines: string[], filePath: string): ContextBreakIssue[] {
   const issues: ContextBreakIssue[] = [];
 
@@ -40,8 +57,6 @@ function detectNamingInconsistency(lines: string[], filePath: string): ContextBr
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-
-    // Extract variable/function declarations
     const declMatch = line.match(/(?:const|let|var|function)\s+(\w+)/);
     if (declMatch) {
       const name = declMatch[1];
@@ -55,7 +70,6 @@ function detectNamingInconsistency(lines: string[], filePath: string): ContextBr
     }
   }
 
-  // If there's a significant mix, flag it
   if (camelCaseCount > 0 && snakeCaseCount > 0) {
     const minority = camelCaseCount < snakeCaseCount ? camelCaseLines : snakeCaseLines;
     const majorStyle = camelCaseCount >= snakeCaseCount ? 'camelCase' : 'snake_case';
@@ -75,7 +89,6 @@ function detectNamingInconsistency(lines: string[], filePath: string): ContextBr
   return issues;
 }
 
-/** Detect mixed module systems (ESM vs CJS) */
 function detectModuleSystemMix(lines: string[], filePath: string): ContextBreakIssue[] {
   const issues: ContextBreakIssue[] = [];
   let hasESMImport = false;
@@ -108,7 +121,6 @@ function detectModuleSystemMix(lines: string[], filePath: string): ContextBreakI
   return issues;
 }
 
-/** Detect mixed async patterns */
 function detectAsyncPatternMix(lines: string[], filePath: string): ContextBreakIssue[] {
   const issues: ContextBreakIssue[] = [];
   const source = lines.join('\n');
@@ -120,7 +132,6 @@ function detectAsyncPatternMix(lines: string[], filePath: string): ContextBreakI
   if (/\bawait\s/.test(source)) hasAsyncAwait = true;
   if (/\.then\s*\(/.test(source)) hasThenChain = true;
 
-  // Check for callback patterns (function(err, result))
   const callbackPattern = /function\s*\(\s*err(?:or)?\s*,/g;
   if (callbackPattern.test(source)) hasCallback = true;
 
@@ -141,11 +152,79 @@ function detectAsyncPatternMix(lines: string[], filePath: string): ContextBreakI
   return issues;
 }
 
+// ─── Severity & Category Mapping ───
+
+function mapSeverity(type: ContextBreakIssue['type']): Severity {
+  switch (type) {
+    case 'naming-inconsistency':
+      return 'low';
+    case 'module-system-mix':
+      return 'medium';
+    case 'async-pattern-mix':
+      return 'low';
+    case 'style-break':
+      return 'low';
+    case 'error-handling-inconsistency':
+      return 'medium';
+    default:
+      return 'low';
+  }
+}
+
+function toUnifiedIssue(issue: ContextBreakIssue, index: number): UnifiedIssue {
+  return {
+    id: `context-break:${index}`,
+    detector: 'context-break',
+    category: AIDefectCategory.CONTEXT_LOSS,
+    severity: mapSeverity(issue.type),
+    message: issue.message,
+    file: issue.file,
+    line: issue.line,
+    fix: issue.suggestion ? {
+      description: issue.suggestion,
+      autoFixable: false,
+    } : undefined,
+  };
+}
+
+// ─── Main Detector ───
+
 /**
- * Main Context Break Detector
+ * ContextBreakDetector — detects AI context window inconsistencies.
+ *
+ * V3: Implements the unified Detector interface.
+ * V2 (deprecated): Old analyze() signature still works.
  */
-export class ContextBreakDetector {
-  /** Analyze a single file */
+export class ContextBreakDetector implements Detector {
+  readonly name = 'context-break';
+  readonly version = '2.0.0';
+  readonly tier = 1 as const;
+
+  // ─── V3 Unified Interface ───
+
+  /**
+   * V3 unified detect method.
+   */
+  async detect(files: FileAnalysis[]): Promise<UnifiedIssue[]> {
+    const allIssues: UnifiedIssue[] = [];
+    let globalIndex = 0;
+
+    for (const file of files) {
+      const result = this.analyze(file.path, file.content);
+      for (const issue of result.issues) {
+        allIssues.push(toUnifiedIssue(issue, globalIndex++));
+      }
+    }
+
+    return allIssues;
+  }
+
+  // ─── V2 Legacy Interface (Deprecated) ───
+
+  /**
+   * Analyze a single file.
+   * @deprecated Use detect(files) instead. Will be removed in v0.4.0.
+   */
   analyze(filePath: string, source: string): ContextBreakResult {
     const lines = source.split('\n');
     const rawIssues: ContextBreakIssue[] = [
@@ -154,7 +233,6 @@ export class ContextBreakDetector {
       ...detectAsyncPatternMix(lines, filePath),
     ];
 
-    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
     const issues = rawIssues.filter(issue => {
       if (issue.line <= 0) return true;
       const prevLine = lines[issue.line - 2] || '';

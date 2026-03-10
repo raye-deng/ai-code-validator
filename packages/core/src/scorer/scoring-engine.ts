@@ -1,21 +1,115 @@
 /**
- * Scoring Engine
+ * Scoring Engine V3
  *
- * Calculates a composite quality score (0-100) for AI-generated code.
+ * Multi-dimensional scoring engine for AI-generated code quality.
  *
- * Scoring dimensions (total: 100):
- * - Code Completeness (30): No hallucinated variables/functions/packages
- * - Logic Coherence   (25): No logic gaps, meaningful control flow
- * - Architecture Consistency (25): Consistent style and patterns
- * - Code Conciseness  (20): No obvious duplication or redundancy
+ * V3 scoring dimensions (total: 100):
+ *   - AI Faithfulness       (35): Hallucination — packages/APIs/methods existence
+ *   - Code Freshness        (25): Timeliness — deprecated APIs and methods
+ *   - Context Coherence     (20): Consistency across long files and functions
+ *   - Implementation Quality (20): Completeness, error handling, complexity
+ *
+ * Grade scale: A+ (95-100), A (90-94), B (80-89), C (70-79), D (60-69), F (0-59)
+ *
+ * Backward compatible: legacy scoreFile() is preserved (deprecated).
  */
 
-import type { HallucinationResult } from '../detectors/hallucination.js';
-import type { LogicGapResult } from '../detectors/logic-gap.js';
-import type { DuplicationResult } from '../detectors/duplication.js';
-import type { ContextBreakResult } from '../detectors/context-break.js';
+import type {
+  UnifiedIssue,
+  Severity,
+  Grade,
+  ScoringDimensionId,
+  ScoringDimensionConfig,
+} from '../types.js';
+import { AIDefectCategory } from '../types.js';
 
-/** Individual dimension score */
+// Re-export legacy types for backward compatibility
+export type { Grade };
+
+// ─── V3 Scoring Dimensions ─────────────────────────────────────────
+
+export const DIMENSIONS: Record<ScoringDimensionId, ScoringDimensionConfig> = {
+  aiFaithfulness: { weight: 35, name: 'AI Faithfulness' },
+  codeFreshness: { weight: 25, name: 'Code Freshness' },
+  contextCoherence: { weight: 20, name: 'Context Coherence' },
+  implementationQuality: { weight: 20, name: 'Implementation Quality' },
+};
+
+// ─── Severity Deductions ───────────────────────────────────────────
+
+export const SEVERITY_DEDUCTIONS: Record<Severity, number> = {
+  critical: 15,
+  high: 10,
+  medium: 5,
+  low: 2,
+  info: 0,
+};
+
+// ─── Category → Dimension Mapping ──────────────────────────────────
+
+/**
+ * Maps each AIDefectCategory to a scoring dimension.
+ */
+export const CATEGORY_DIMENSION_MAP: Record<AIDefectCategory, ScoringDimensionId> = {
+  [AIDefectCategory.HALLUCINATION]: 'aiFaithfulness',
+  [AIDefectCategory.SECURITY_ANTIPATTERN]: 'aiFaithfulness',
+  [AIDefectCategory.TRAINING_LEAK]: 'aiFaithfulness',
+  [AIDefectCategory.STALE_KNOWLEDGE]: 'codeFreshness',
+  [AIDefectCategory.CONTEXT_LOSS]: 'contextCoherence',
+  [AIDefectCategory.INCOMPLETE_IMPL]: 'implementationQuality',
+  [AIDefectCategory.OVER_ENGINEERING]: 'implementationQuality',
+  [AIDefectCategory.DUPLICATION]: 'implementationQuality',
+  [AIDefectCategory.TYPE_SAFETY]: 'implementationQuality',
+  [AIDefectCategory.ERROR_HANDLING]: 'implementationQuality',
+};
+
+// ─── Score Result Types ────────────────────────────────────────────
+
+/** Score for a single dimension */
+export interface DimensionScoreV3 {
+  id: ScoringDimensionId;
+  name: string;
+  maxScore: number;
+  score: number;
+  issueCount: number;
+  rawDeduction: number;
+  normalizedDeduction: number;
+  issues: UnifiedIssue[];
+}
+
+/** Score result for a set of issues (file-level or project-level) */
+export interface ScoreResult {
+  totalScore: number;
+  grade: Grade;
+  dimensions: Record<ScoringDimensionId, DimensionScoreV3>;
+  issueCount: number;
+  passed: boolean;
+  threshold: number;
+}
+
+/** Score result for a single file */
+export interface FileScoreV3 extends ScoreResult {
+  file: string;
+}
+
+/** Aggregate score across multiple files */
+export interface AggregateScoreV3 {
+  overallScore: number;
+  grade: Grade;
+  totalFiles: number;
+  passedFiles: number;
+  failedFiles: number;
+  files: FileScoreV3[];
+  dimensions: Record<ScoringDimensionId, DimensionScoreV3>;
+  issueCount: number;
+  passed: boolean;
+  threshold: number;
+  timestamp: string;
+}
+
+// ─── Legacy Types (backward compatibility) ─────────────────────────
+
+/** @deprecated Use DimensionScoreV3 instead */
 export interface DimensionScore {
   name: string;
   maxScore: number;
@@ -24,7 +118,7 @@ export interface DimensionScore {
   details: string[];
 }
 
-/** Overall quality report for a single file */
+/** @deprecated Use FileScoreV3 instead */
 export interface FileScore {
   file: string;
   totalScore: number;
@@ -38,7 +132,7 @@ export interface FileScore {
   passed: boolean;
 }
 
-/** Aggregate report across all files */
+/** @deprecated Use AggregateScoreV3 instead */
 export interface AggregateScore {
   overallScore: number;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
@@ -50,8 +144,10 @@ export interface AggregateScore {
   timestamp: string;
 }
 
-/** Score thresholds for grading */
-function computeGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
+// ─── Grade Computation ─────────────────────────────────────────────
+
+export function computeGrade(score: number): Grade {
+  if (score >= 95) return 'A+';
   if (score >= 90) return 'A';
   if (score >= 80) return 'B';
   if (score >= 70) return 'C';
@@ -59,19 +155,16 @@ function computeGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
   return 'F';
 }
 
-/** Weight configuration */
-const WEIGHTS = {
-  completeness: 30,
-  coherence: 25,
-  consistency: 25,
-  conciseness: 20,
-} as const;
+/** Legacy grade (without A+) for backward compatibility */
+function computeLegacyGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'F';
+}
 
-/** Per-issue deductions */
-const DEDUCTIONS = {
-  error: 10,
-  warning: 3,
-} as const;
+// ─── Scoring Engine ────────────────────────────────────────────────
 
 export class ScoringEngine {
   private threshold: number;
@@ -80,42 +173,117 @@ export class ScoringEngine {
     this.threshold = threshold;
   }
 
+  // ─── V3 API ────────────────────────────────────────────────────
+
   /**
-   * Score a single file based on detector results
+   * Score a set of UnifiedIssues.
+   * Can be used for file-level or project-level scoring.
+   */
+  score(issues: UnifiedIssue[]): ScoreResult {
+    const dimensionIssues = this.groupByDimension(issues);
+    const dimensions = this.scoreDimensions(dimensionIssues);
+
+    const totalScore = Math.round(
+      Object.values(dimensions).reduce((sum, d) => sum + d.score, 0),
+    );
+
+    return {
+      totalScore,
+      grade: computeGrade(totalScore),
+      dimensions,
+      issueCount: issues.length,
+      passed: totalScore >= this.threshold,
+      threshold: this.threshold,
+    };
+  }
+
+  /**
+   * Score issues grouped by file, returning per-file scores.
+   */
+  scoreByFile(issues: UnifiedIssue[]): FileScoreV3[] {
+    const fileMap = new Map<string, UnifiedIssue[]>();
+
+    for (const issue of issues) {
+      const existing = fileMap.get(issue.file);
+      if (existing) {
+        existing.push(issue);
+      } else {
+        fileMap.set(issue.file, [issue]);
+      }
+    }
+
+    return Array.from(fileMap.entries()).map(([file, fileIssues]) => {
+      const result = this.score(fileIssues);
+      return { ...result, file };
+    });
+  }
+
+  /**
+   * Aggregate scores across multiple files into a project-level report.
+   */
+  aggregateV3(issues: UnifiedIssue[]): AggregateScoreV3 {
+    const fileScores = this.scoreByFile(issues);
+
+    if (fileScores.length === 0) {
+      return {
+        overallScore: 100,
+        grade: 'A+' as Grade,
+        totalFiles: 0,
+        passedFiles: 0,
+        failedFiles: 0,
+        files: [],
+        dimensions: this.emptyDimensions(),
+        issueCount: 0,
+        passed: true,
+        threshold: this.threshold,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // Project-level score: score ALL issues together (not average of file scores)
+    const projectScore = this.score(issues);
+
+    const passedFiles = fileScores.filter(f => f.passed).length;
+
+    return {
+      overallScore: projectScore.totalScore,
+      grade: projectScore.grade,
+      totalFiles: fileScores.length,
+      passedFiles,
+      failedFiles: fileScores.length - passedFiles,
+      files: fileScores,
+      dimensions: projectScore.dimensions,
+      issueCount: issues.length,
+      passed: projectScore.passed,
+      threshold: this.threshold,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ─── Legacy API (backward compatibility) ───────────────────────
+
+  /**
+   * @deprecated Use `score(issues)` instead.
+   * Score a single file based on legacy detector results.
    */
   scoreFile(
     filePath: string,
-    hallucination: HallucinationResult | null,
-    logicGap: LogicGapResult | null,
-    duplication: DuplicationResult | null,
-    contextBreak: ContextBreakResult | null,
+    hallucination: { issues: Array<{ severity: string; message: string }> } | null,
+    logicGap: { issues: Array<{ severity: string; message: string }> } | null,
+    duplication: { issues: Array<{ severity: string; message: string }> } | null,
+    contextBreak: { issues: Array<{ severity: string; message: string }> } | null,
   ): FileScore {
-    // Completeness dimension (hallucination)
-    const completeness = this.scoreDimension(
-      'Code Completeness',
-      WEIGHTS.completeness,
-      hallucination?.issues ?? [],
+    const completeness = this.scoreLegacyDimension(
+      'Code Completeness', 30, hallucination?.issues ?? [],
     );
-
-    // Coherence dimension (logic gaps)
-    const coherence = this.scoreDimension(
-      'Logic Coherence',
-      WEIGHTS.coherence,
-      logicGap?.issues ?? [],
+    const coherence = this.scoreLegacyDimension(
+      'Logic Coherence', 25, logicGap?.issues ?? [],
     );
-
-    // Consistency dimension (context breaks)
-    const consistency = this.scoreDimension(
-      'Architecture Consistency',
-      WEIGHTS.consistency,
-      contextBreak?.issues ?? [],
+    const consistency = this.scoreLegacyDimension(
+      'Architecture Consistency', 25, contextBreak?.issues ?? [],
     );
-
-    // Conciseness dimension (duplication)
-    const conciseness = this.scoreDimension(
-      'Code Conciseness',
-      WEIGHTS.conciseness,
-      duplication?.issues ?? [],
+    const conciseness = this.scoreLegacyDimension(
+      'Code Conciseness', 20, duplication?.issues ?? [],
     );
 
     const totalScore = Math.round(
@@ -125,49 +293,15 @@ export class ScoringEngine {
     return {
       file: filePath,
       totalScore,
-      grade: computeGrade(totalScore),
-      dimensions: {
-        completeness,
-        coherence,
-        consistency,
-        conciseness,
-      },
+      grade: computeLegacyGrade(totalScore),
+      dimensions: { completeness, coherence, consistency, conciseness },
       passed: totalScore >= this.threshold,
     };
   }
 
   /**
-   * Score a single dimension based on issues found
-   */
-  private scoreDimension(
-    name: string,
-    maxScore: number,
-    issues: Array<{ severity: string; message: string }>,
-  ): DimensionScore {
-    let deduction = 0;
-    const details: string[] = [];
-
-    for (const issue of issues) {
-      const amount = issue.severity === 'error' ? DEDUCTIONS.error : DEDUCTIONS.warning;
-      deduction += amount;
-      details.push(issue.message);
-    }
-
-    // Normalize deduction to the max score of this dimension
-    const normalizedDeduction = Math.min(maxScore, (deduction / 100) * maxScore);
-    const score = Math.round((maxScore - normalizedDeduction) * 100) / 100;
-
-    return {
-      name,
-      maxScore,
-      score: Math.max(0, score),
-      issueCount: issues.length,
-      details: details.slice(0, 10), // Top 10 details
-    };
-  }
-
-  /**
-   * Aggregate scores across multiple files
+   * @deprecated Use `aggregateV3(issues)` instead.
+   * Aggregate scores across multiple files (legacy format).
    */
   aggregate(fileScores: FileScore[]): AggregateScore {
     if (fileScores.length === 0) {
@@ -191,13 +325,143 @@ export class ScoringEngine {
 
     return {
       overallScore,
-      grade: computeGrade(overallScore),
+      grade: computeLegacyGrade(overallScore),
       totalFiles: fileScores.length,
       passedFiles,
       failedFiles: fileScores.length - passedFiles,
       files: fileScores,
       passed: overallScore >= this.threshold,
       timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ─── Internal Scoring Logic ────────────────────────────────────
+
+  /**
+   * Group issues by scoring dimension based on their category.
+   */
+  private groupByDimension(issues: UnifiedIssue[]): Record<ScoringDimensionId, UnifiedIssue[]> {
+    const groups: Record<ScoringDimensionId, UnifiedIssue[]> = {
+      aiFaithfulness: [],
+      codeFreshness: [],
+      contextCoherence: [],
+      implementationQuality: [],
+    };
+
+    for (const issue of issues) {
+      const dimensionId = CATEGORY_DIMENSION_MAP[issue.category];
+      if (dimensionId) {
+        groups[dimensionId].push(issue);
+      } else {
+        // Default unmapped categories to implementationQuality
+        groups.implementationQuality.push(issue);
+      }
+    }
+
+    return groups;
+  }
+
+  /**
+   * Score all dimensions from grouped issues.
+   */
+  private scoreDimensions(
+    grouped: Record<ScoringDimensionId, UnifiedIssue[]>,
+  ): Record<ScoringDimensionId, DimensionScoreV3> {
+    const result = {} as Record<ScoringDimensionId, DimensionScoreV3>;
+
+    for (const [id, config] of Object.entries(DIMENSIONS) as [ScoringDimensionId, ScoringDimensionConfig][]) {
+      const issues = grouped[id] ?? [];
+      result[id] = this.scoreSingleDimension(id, config, issues);
+    }
+
+    return result;
+  }
+
+  /**
+   * Score a single dimension.
+   *
+   * Deduction calculation:
+   *   1. Sum raw deductions: Σ SEVERITY_DEDUCTIONS[issue.severity]
+   *   2. Normalize to dimension weight range:
+   *      normalizedDeduction = min(maxScore, (rawDeduction / 100) * maxScore)
+   *   3. Dimension score = maxScore - normalizedDeduction (clamped to [0, maxScore])
+   */
+  private scoreSingleDimension(
+    id: ScoringDimensionId,
+    config: ScoringDimensionConfig,
+    issues: UnifiedIssue[],
+  ): DimensionScoreV3 {
+    const maxScore = config.weight;
+    let rawDeduction = 0;
+
+    for (const issue of issues) {
+      rawDeduction += SEVERITY_DEDUCTIONS[issue.severity] ?? 0;
+    }
+
+    const normalizedDeduction = Math.min(maxScore, (rawDeduction / 100) * maxScore);
+    const score = Math.max(0, Math.round((maxScore - normalizedDeduction) * 100) / 100);
+
+    return {
+      id,
+      name: config.name,
+      maxScore,
+      score,
+      issueCount: issues.length,
+      rawDeduction,
+      normalizedDeduction: Math.round(normalizedDeduction * 100) / 100,
+      issues,
+    };
+  }
+
+  /**
+   * Create empty dimension scores (for zero-issue projects).
+   */
+  private emptyDimensions(): Record<ScoringDimensionId, DimensionScoreV3> {
+    const result = {} as Record<ScoringDimensionId, DimensionScoreV3>;
+
+    for (const [id, config] of Object.entries(DIMENSIONS) as [ScoringDimensionId, ScoringDimensionConfig][]) {
+      result[id] = {
+        id,
+        name: config.name,
+        maxScore: config.weight,
+        score: config.weight,
+        issueCount: 0,
+        rawDeduction: 0,
+        normalizedDeduction: 0,
+        issues: [],
+      };
+    }
+
+    return result;
+  }
+
+  /**
+   * Legacy dimension scoring for backward compatibility.
+   */
+  private scoreLegacyDimension(
+    name: string,
+    maxScore: number,
+    issues: Array<{ severity: string; message: string }>,
+  ): DimensionScore {
+    const LEGACY_DEDUCTIONS = { error: 10, warning: 3 } as Record<string, number>;
+    let deduction = 0;
+    const details: string[] = [];
+
+    for (const issue of issues) {
+      const amount = LEGACY_DEDUCTIONS[issue.severity] ?? LEGACY_DEDUCTIONS.warning;
+      deduction += amount;
+      details.push(issue.message);
+    }
+
+    const normalizedDeduction = Math.min(maxScore, (deduction / 100) * maxScore);
+    const score = Math.round((maxScore - normalizedDeduction) * 100) / 100;
+
+    return {
+      name,
+      maxScore,
+      score: Math.max(0, score),
+      issueCount: issues.length,
+      details: details.slice(0, 10),
     };
   }
 }

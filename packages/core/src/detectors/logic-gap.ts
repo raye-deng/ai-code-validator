@@ -1,5 +1,5 @@
 /**
- * Logic Gap Detector
+ * Logic Gap Detector (V3)
  *
  * Detects AI-generated code logic discontinuities:
  * 1. Empty catch blocks (swallowed errors)
@@ -8,8 +8,21 @@
  * 4. Unused variables that suggest incomplete logic
  * 5. TODO/FIXME markers left by AI (incomplete implementation)
  * 6. Functions that declare parameters but never use them
+ *
+ * Implements the unified Detector interface.
+ *
+ * @since 0.2.0 (original)
+ * @since 0.3.0 (V3 unified interface)
  */
 
+import type { Detector, UnifiedIssue, FileAnalysis, Severity } from '../types.js';
+import { AIDefectCategory } from '../types.js';
+
+// ─── Legacy Types (Backward Compatible) ───
+
+/**
+ * @deprecated Use UnifiedIssue instead. Will be removed in v0.4.0.
+ */
 export interface LogicGapIssue {
   type:
     | 'empty-catch'
@@ -26,36 +39,34 @@ export interface LogicGapIssue {
   suggestion?: string;
 }
 
+/**
+ * @deprecated Use UnifiedIssue[] instead. Will be removed in v0.4.0.
+ */
 export interface LogicGapResult {
   file: string;
   issues: LogicGapIssue[];
   score: number;
 }
 
-/**
- * Detect empty catch blocks
- */
+// ─── Internal Detection Functions ───
+
 function detectEmptyCatch(lines: string[], filePath: string): LogicGapIssue[] {
   const issues: LogicGapIssue[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    // Pattern: catch (...) { } or catch { }
     if (/catch\s*(\([^)]*\))?\s*\{/.test(line)) {
-      // Check if the next non-empty line is just a closing brace
       let j = i + 1;
       let blockContent = '';
       let braceDepth = 0;
       let foundOpen = false;
 
-      // Count braces on catch line
       for (const ch of line) {
         if (ch === '{') { braceDepth++; foundOpen = true; }
         if (ch === '}') braceDepth--;
       }
 
-      // If the block was opened and closed on the same line
       if (foundOpen && braceDepth === 0) {
         const afterCatch = line.replace(/catch\s*(\([^)]*\))?\s*\{/, '').replace('}', '').trim();
         if (!afterCatch) {
@@ -71,7 +82,6 @@ function detectEmptyCatch(lines: string[], filePath: string): LogicGapIssue[] {
         }
       }
 
-      // Multi-line: look ahead
       if (braceDepth > 0) {
         while (j < lines.length && braceDepth > 0) {
           for (const ch of lines[j]) {
@@ -81,10 +91,7 @@ function detectEmptyCatch(lines: string[], filePath: string): LogicGapIssue[] {
           blockContent += lines[j].trim();
           j++;
         }
-
-        // Remove the final closing brace content
         blockContent = blockContent.replace(/}$/, '').trim();
-
         if (!blockContent || blockContent === '// TODO' || blockContent === '// ignore') {
           issues.push({
             type: 'empty-catch',
@@ -102,9 +109,6 @@ function detectEmptyCatch(lines: string[], filePath: string): LogicGapIssue[] {
   return issues;
 }
 
-/**
- * Detect incomplete implementation markers
- */
 function detectIncompleteImpl(lines: string[], filePath: string): LogicGapIssue[] {
   const issues: LogicGapIssue[] = [];
   const markers = [
@@ -136,31 +140,19 @@ function detectIncompleteImpl(lines: string[], filePath: string): LogicGapIssue[
   return issues;
 }
 
-/**
- * Detect unreachable code after return/throw/break/continue
- */
 function detectUnreachableCode(lines: string[], filePath: string): LogicGapIssue[] {
   const issues: LogicGapIssue[] = [];
 
   for (let i = 0; i < lines.length - 1; i++) {
     const line = lines[i].trim();
 
-    // Check for return/throw/break/continue statements
     if (/^(return|throw)\s/.test(line) || /^(return|throw);?$/.test(line)) {
-      // Look at the next non-empty, non-comment line
       let j = i + 1;
       while (j < lines.length) {
         const next = lines[j].trim();
-        if (!next || next.startsWith('//') || next.startsWith('*')) {
-          j++;
-          continue;
-        }
-        // If next statement is a closing brace, case, or another block end, that's fine
+        if (!next || next.startsWith('//') || next.startsWith('*')) { j++; continue; }
         if (next === '}' || next.startsWith('case ') || next.startsWith('default:')) break;
-        // If it's a function/class declaration, could be legitimate
         if (/^(function|class|export|const|let|var|interface|type|enum)/.test(next)) break;
-
-        // Otherwise it might be unreachable
         issues.push({
           type: 'unreachable-code',
           severity: 'warning',
@@ -177,14 +169,10 @@ function detectUnreachableCode(lines: string[], filePath: string): LogicGapIssue
   return issues;
 }
 
-/**
- * Detect missing error handling in async functions
- */
 function detectMissingErrorHandling(lines: string[], filePath: string): LogicGapIssue[] {
   const issues: LogicGapIssue[] = [];
   const source = lines.join('\n');
 
-  // Find async functions that don't have try-catch
   const asyncFuncPattern = /async\s+(?:function\s+)?(\w+)?\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/g;
   let match: RegExpExecArray | null;
 
@@ -192,7 +180,6 @@ function detectMissingErrorHandling(lines: string[], filePath: string): LogicGap
     const startIdx = match.index;
     const lineNum = source.substring(0, startIdx).split('\n').length;
 
-    // Look within the function body for try-catch
     let braceDepth = 0;
     let hasTryCatch = false;
     let searchStart = source.indexOf('{', startIdx);
@@ -205,15 +192,12 @@ function detectMissingErrorHandling(lines: string[], filePath: string): LogicGap
         braceDepth--;
         if (braceDepth === 0) break;
       }
-
-      // Check if there's a try block at depth 1
       if (braceDepth === 1 && source.substring(k).startsWith('try')) {
         hasTryCatch = true;
         break;
       }
     }
 
-    // Also check if the function has .catch() calls
     const funcBody = source.substring(searchStart, source.indexOf('}', searchStart + 1) + 1);
     if (funcBody.includes('.catch(') || funcBody.includes('.catch (')) {
       hasTryCatch = true;
@@ -221,7 +205,6 @@ function detectMissingErrorHandling(lines: string[], filePath: string): LogicGap
 
     if (!hasTryCatch) {
       const funcName = match[1] || 'anonymous';
-      // Only flag if function has await calls (actually does async operations)
       if (funcBody.includes('await ')) {
         issues.push({
           type: 'missing-error-handling',
@@ -238,12 +221,97 @@ function detectMissingErrorHandling(lines: string[], filePath: string): LogicGap
   return issues;
 }
 
+// ─── Severity & Category Mapping ───
+
+function mapSeverity(type: LogicGapIssue['type']): Severity {
+  switch (type) {
+    case 'empty-catch':
+    case 'missing-error-handling':
+      return 'medium';
+    case 'unreachable-code':
+    case 'dead-code':
+      return 'low';
+    case 'incomplete-implementation':
+      return 'medium';
+    case 'unused-variable':
+      return 'low';
+    case 'missing-return':
+      return 'medium';
+    default:
+      return 'low';
+  }
+}
+
+function mapCategory(type: LogicGapIssue['type']): AIDefectCategory {
+  switch (type) {
+    case 'empty-catch':
+    case 'missing-error-handling':
+      return AIDefectCategory.ERROR_HANDLING;
+    case 'incomplete-implementation':
+    case 'missing-return':
+      return AIDefectCategory.INCOMPLETE_IMPL;
+    case 'unreachable-code':
+    case 'dead-code':
+    case 'unused-variable':
+      return AIDefectCategory.CONTEXT_LOSS;
+    default:
+      return AIDefectCategory.INCOMPLETE_IMPL;
+  }
+}
+
+function toUnifiedIssue(issue: LogicGapIssue, index: number): UnifiedIssue {
+  return {
+    id: `logic-gap:${index}`,
+    detector: 'logic-gap',
+    category: mapCategory(issue.type),
+    severity: mapSeverity(issue.type),
+    message: issue.message,
+    file: issue.file,
+    line: issue.line,
+    fix: issue.suggestion ? {
+      description: issue.suggestion,
+      autoFixable: false,
+    } : undefined,
+  };
+}
+
+// ─── Main Detector ───
+
 /**
- * Main Logic Gap Detector
+ * LogicGapDetector — detects AI-generated code logic gaps.
+ *
+ * V3: Implements the unified Detector interface.
+ * V2 (deprecated): Old analyze() signature still works.
  */
-export class LogicGapDetector {
+export class LogicGapDetector implements Detector {
+  readonly name = 'logic-gap';
+  readonly version = '2.0.0';
+  readonly tier = 1 as const;
+
+  // ─── V3 Unified Interface ───
+
   /**
-   * Analyze a single file for logic gap issues
+   * V3 unified detect method.
+   */
+  async detect(files: FileAnalysis[]): Promise<UnifiedIssue[]> {
+    const allIssues: UnifiedIssue[] = [];
+    let globalIndex = 0;
+
+    for (const file of files) {
+      const result = this.analyze(file.path, file.content);
+      for (const issue of result.issues) {
+        allIssues.push(toUnifiedIssue(issue, globalIndex++));
+      }
+    }
+
+    return allIssues;
+  }
+
+  // ─── V2 Legacy Interface (Deprecated) ───
+
+  /**
+   * Analyze a single file for logic gap issues.
+   * @deprecated Use detect(files) instead. Will be removed in v0.4.0.
    */
   analyze(filePath: string, source: string): LogicGapResult {
     const lines = source.split('\n');
@@ -254,7 +322,6 @@ export class LogicGapDetector {
       ...detectMissingErrorHandling(lines, filePath),
     ];
 
-    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
     const issues = rawIssues.filter(issue => {
       if (issue.line <= 0) return true;
       const prevLine = lines[issue.line - 2] || '';

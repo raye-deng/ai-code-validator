@@ -1,17 +1,29 @@
 /**
- * Hallucination Detector
+ * Hallucination Detector (V3)
  *
  * Detects AI-generated code hallucination patterns:
  * 1. References to non-existent npm packages (compared against package.json)
  * 2. Calls to undefined functions/variables
  * 3. Usage of non-existent API endpoints (if OpenAPI spec is provided)
  * 4. Imported but never-defined types
+ *
+ * Implements the unified Detector interface.
+ * Backward compatible: old analyze() signature is preserved but deprecated.
+ *
+ * @since 0.2.0 (original)
+ * @since 0.3.0 (V3 unified interface)
  */
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import type { Detector, UnifiedIssue, FileAnalysis } from '../types.js';
+import { AIDefectCategory } from '../types.js';
 
-/** A single hallucination finding */
+// ─── Legacy Types (Backward Compatible) ───
+
+/**
+ * @deprecated Use UnifiedIssue instead. Will be removed in v0.4.0.
+ */
 export interface HallucinationIssue {
   type: 'phantom-package' | 'phantom-function' | 'phantom-api' | 'phantom-type';
   severity: 'error' | 'warning';
@@ -22,28 +34,27 @@ export interface HallucinationIssue {
   suggestion?: string;
 }
 
-/** Options for the hallucination detector */
+/**
+ * @deprecated Use Detector.detect() instead. Will be removed in v0.4.0.
+ */
 export interface HallucinationDetectorOptions {
-  /** Root directory of the project (where package.json lives) */
   projectRoot: string;
-  /** Optional OpenAPI spec path for API endpoint validation */
   openApiSpecPath?: string;
-  /** Extra known packages to whitelist */
   knownPackages?: string[];
-  /** Whether to ignore known framework decorators (default: true) */
   ignoreDecorators?: boolean;
 }
 
-/** Result of running the hallucination detector on a file */
+/**
+ * @deprecated Use UnifiedIssue[] instead. Will be removed in v0.4.0.
+ */
 export interface HallucinationResult {
   file: string;
   issues: HallucinationIssue[];
-  score: number; // 0-100, higher is better
+  score: number;
 }
 
-/**
- * Resolve the full set of valid package names from package.json + node_modules
- */
+// ─── Internal Helpers ───
+
 function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<string> {
   const packages = new Set<string>([
     // Node.js built-in modules
@@ -53,7 +64,6 @@ function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<st
     'node:dns', 'node:assert', 'node:readline', 'node:worker_threads',
     'node:perf_hooks', 'node:async_hooks', 'node:timers', 'node:timers/promises',
     'node:fs/promises', 'node:stream/promises', 'node:test',
-    // Legacy (non-prefixed) built-ins
     'fs', 'path', 'url', 'http', 'https', 'crypto', 'stream', 'util', 'os',
     'child_process', 'events', 'buffer', 'querystring', 'zlib', 'net', 'tls',
     'dns', 'assert', 'readline', 'worker_threads', 'perf_hooks', 'async_hooks',
@@ -61,7 +71,6 @@ function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<st
     ...extra,
   ]);
 
-  // Walk up to find the nearest package.json
   let dir = projectRoot;
   while (dir !== dirname(dir)) {
     const pkgPath = join(dir, 'package.json');
@@ -77,7 +86,6 @@ function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<st
         for (const name of Object.keys(deps)) {
           packages.add(name);
         }
-        // In monorepo: also read root workspace package.json (one or two levels up)
         const isWorkspacePkg = pkg.name && (dir.includes('/packages/') || dir.includes('/apps/'));
         if (isWorkspacePkg) {
           for (let up = dirname(dir); up !== dirname(up); up = dirname(up)) {
@@ -94,9 +102,7 @@ function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<st
             }
           }
         }
-      } catch {
-        // Ignore malformed package.json
-      }
+      } catch { /* ignore */ }
       break;
     }
     dir = dirname(dir);
@@ -105,7 +111,6 @@ function resolveValidPackages(projectRoot: string, extra: string[] = []): Set<st
   return packages;
 }
 
-/** Extract import/require statements from source text */
 function extractImports(source: string): Array<{ module: string; line: number }> {
   const imports: Array<{ module: string; line: number }> = [];
   const lines = source.split('\n');
@@ -114,28 +119,24 @@ function extractImports(source: string): Array<{ module: string; line: number }>
     const line = lines[i];
     const lineNum = i + 1;
 
-    // ES import: import ... from 'module'
     const esMatch = line.match(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/);
     if (esMatch) {
       imports.push({ module: esMatch[1], line: lineNum });
       continue;
     }
 
-    // ES import: import 'module' (side-effect)
     const sideEffectMatch = line.match(/import\s+['"]([^'"]+)['"]/);
     if (sideEffectMatch) {
       imports.push({ module: sideEffectMatch[1], line: lineNum });
       continue;
     }
 
-    // Dynamic import: import('module')
     const dynamicMatch = line.match(/import\s*\(\s*['"]([^'"]+)['"]\s*\)/);
     if (dynamicMatch) {
       imports.push({ module: dynamicMatch[1], line: lineNum });
       continue;
     }
 
-    // CommonJS: require('module')
     const requireMatch = line.match(/require\s*\(\s*['"]([^'"]+)['"]\s*\)/);
     if (requireMatch) {
       imports.push({ module: requireMatch[1], line: lineNum });
@@ -145,42 +146,21 @@ function extractImports(source: string): Array<{ module: string; line: number }>
   return imports;
 }
 
-/** Get the top-level package name from an import specifier */
 function getPackageName(specifier: string): string | null {
-  // Relative imports
-  if (specifier.startsWith('.') || specifier.startsWith('/')) {
-    return null;
-  }
-
-  // Scoped packages: @scope/package/sub → @scope/package
+  if (specifier.startsWith('.') || specifier.startsWith('/')) return null;
   if (specifier.startsWith('@')) {
     const parts = specifier.split('/');
-    if (parts.length >= 2) {
-      return `${parts[0]}/${parts[1]}`;
-    }
+    if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
     return specifier;
   }
-
-  // Regular packages: package/sub → package
   return specifier.split('/')[0];
 }
 
-/**
- * Detect undefined variable/function references.
- * Uses a simple heuristic: finds identifiers that look like function calls
- * but are never imported or declared in the file.
- */
-function detectPhantomReferences(
-  source: string,
-  filePath: string,
-): HallucinationIssue[] {
+function detectPhantomReferences(source: string, filePath: string): HallucinationIssue[] {
   const issues: HallucinationIssue[] = [];
   const lines = source.split('\n');
 
-  // Collect all declared identifiers (rough heuristic)
   const declared = new Set<string>();
-
-  // Common global/built-in identifiers
   const builtins = new Set([
     'console', 'process', 'require', 'module', 'exports', '__dirname', '__filename',
     'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'setImmediate',
@@ -195,24 +175,18 @@ function detectPhantomReferences(
     'performance', 'queueMicrotask', 'atob', 'btoa',
     'describe', 'it', 'test', 'expect', 'beforeAll', 'afterAll', 'beforeEach', 'afterEach',
     'vi', 'jest',
-    // Class keywords that appear as identifiers
     'constructor', 'super', 'this',
-    // Common logging / utility patterns
     'log', 'warn', 'error', 'info', 'debug', 'trace',
-    // SQL aggregate functions (appear in TypeORM/raw queries)
     'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'COALESCE', 'NULLIF', 'CAST',
     'count', 'sum', 'avg', 'max', 'min', 'coalesce', 'nullif', 'cast',
-    // Node.js / common runtime
     'next', 'resolve', 'reject', 'emit', 'on', 'off', 'once',
     'toString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf',
   ]);
 
   for (const line of lines) {
-    // Variable declarations
     const varMatch = line.matchAll(/(?:const|let|var|function|class)\s+(\w+)/g);
     for (const m of varMatch) declared.add(m[1]);
 
-    // Import bindings
     const importMatch = line.matchAll(/import\s+(?:{([^}]+)}|(\w+))/g);
     for (const m of importMatch) {
       if (m[1]) {
@@ -224,7 +198,6 @@ function detectPhantomReferences(
       if (m[2]) declared.add(m[2]);
     }
 
-    // Destructuring from require
     const reqMatch = line.match(/(?:const|let|var)\s+{([^}]+)}\s*=\s*require/);
     if (reqMatch) {
       reqMatch[1].split(',').forEach(s => {
@@ -233,7 +206,6 @@ function detectPhantomReferences(
       });
     }
 
-    // Function parameters (basic)
     const paramMatch = line.match(/(?:function\s+\w+|=>)\s*\(([^)]*)\)/);
     if (paramMatch) {
       paramMatch[1].split(',').forEach(s => {
@@ -243,34 +215,23 @@ function detectPhantomReferences(
     }
   }
 
-  // Look for function calls to undeclared identifiers (very conservative)
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmedLine = line.trim();
 
-    // Skip decorator lines entirely (@Decorator(...))
     if (trimmedLine.startsWith('@')) continue;
 
-    // Match standalone function calls: identifier(...)
     const callMatches = line.matchAll(/\b([a-z]\w*)\s*\(/gi);
     for (const m of callMatches) {
       const name = m[1];
-      // Skip if it's a keyword, builtin, or declared
       if (builtins.has(name) || declared.has(name)) continue;
-      // Skip common patterns (methods on objects: obj.method())
       const idx = m.index!;
       if (idx > 0 && line[idx - 1] === '.') continue;
-      // Skip if preceded by @ (decorator call within a line)
       if (idx > 0 && line[idx - 1] === '@') continue;
-      // Skip control flow keywords
       if (['if', 'for', 'while', 'switch', 'catch', 'return', 'throw', 'new', 'typeof', 'instanceof', 'void', 'delete', 'await', 'yield', 'case', 'in', 'of', 'as', 'from', 'import', 'export', 'default', 'extends', 'implements', 'interface', 'type', 'enum', 'namespace', 'abstract', 'declare', 'readonly', 'static', 'public', 'private', 'protected', 'override', 'get', 'set', 'async', 'function', 'class', 'const', 'let', 'var'].includes(name)) continue;
-      // Skip all-uppercase identifiers (likely enum values, constants, SQL)
       if (/^[A-Z][A-Z0-9_]+$/.test(name)) continue;
-      // Skip single-char identifiers (loop variables: i, j, k, etc.)
       if (name.length === 1) continue;
-      // Skip lines that are inside SQL template literals or comments
       if (trimmedLine.startsWith('//') || trimmedLine.startsWith('*') || trimmedLine.startsWith('/*')) continue;
-      // Skip class method definitions (name followed by ( inside class body)
       if (/^\s*(public|private|protected|static|async|override|abstract)?\s*\w+\s*\(/.test(line) && !line.includes('=')) continue;
 
       issues.push({
@@ -287,42 +248,66 @@ function detectPhantomReferences(
   return issues;
 }
 
-/**
- * Known framework decorators that should not be flagged as phantom functions.
- * Covers NestJS, TypeORM, class-validator, class-transformer, Swagger/OpenAPI, etc.
- */
 const FRAMEWORK_DECORATORS = new Set([
-  // NestJS core
   'Controller', 'Get', 'Post', 'Put', 'Delete', 'Patch', 'Options', 'Head', 'All',
   'Injectable', 'Module', 'Component', 'Pipe', 'Guard', 'Interceptor', 'Middleware',
   'UseGuards', 'UseInterceptors', 'UsePipes', 'UseFilters', 'Catch',
-  // NestJS parameter decorators
   'Body', 'Param', 'Query', 'Headers', 'Req', 'Res', 'Next', 'Session', 'UploadedFile',
-  // NestJS DI
   'Inject', 'InjectRepository', 'InjectQueue',
-  // Swagger / OpenAPI
   'ApiProperty', 'ApiTags', 'ApiOperation', 'ApiResponse', 'ApiBody', 'ApiBearerAuth',
-  // TypeORM
   'Column', 'Entity', 'PrimaryGeneratedColumn', 'CreateDateColumn', 'UpdateDateColumn',
   'ManyToOne', 'OneToMany', 'ManyToMany', 'JoinColumn', 'JoinTable', 'OneToOne',
   'BeforeInsert', 'AfterInsert', 'BeforeUpdate', 'AfterUpdate', 'BeforeRemove',
-  // class-validator
   'IsString', 'IsNumber', 'IsBoolean', 'IsEmail', 'IsOptional', 'IsArray', 'IsEnum',
   'IsNotEmpty', 'MinLength', 'MaxLength', 'Min', 'Max', 'ValidateNested',
-  // class-transformer
   'Type', 'Expose', 'Exclude', 'Transform',
-  // Express / Fastify
   'Router',
-  // Angular
   'Component', 'Directive', 'NgModule', 'Input', 'Output', 'HostListener',
-  // TypeScript / JS builtins used as decorators
   'Reflect',
 ]);
 
+// ─── Severity Mapping ───
+
+function mapLegacySeverity(severity: 'error' | 'warning', type: HallucinationIssue['type']): import('../types.js').Severity {
+  if (type === 'phantom-package') return 'high';
+  if (type === 'phantom-api') return 'high';
+  if (severity === 'error') return 'high';
+  return 'medium';
+}
+
 /**
- * Main hallucination detector
+ * Convert a legacy HallucinationIssue to a UnifiedIssue.
  */
-export class HallucinationDetector {
+function toUnifiedIssue(issue: HallucinationIssue, index: number): UnifiedIssue {
+  return {
+    id: `hallucination:${index}`,
+    detector: 'hallucination',
+    category: AIDefectCategory.HALLUCINATION,
+    severity: mapLegacySeverity(issue.severity, issue.type),
+    message: issue.message,
+    file: issue.file,
+    line: issue.line,
+    column: issue.column,
+    fix: issue.suggestion ? {
+      description: issue.suggestion,
+      autoFixable: false,
+    } : undefined,
+  };
+}
+
+// ─── Main Detector ───
+
+/**
+ * HallucinationDetector — detects AI-generated hallucination patterns.
+ *
+ * V3: Implements the unified Detector interface.
+ * V2 (deprecated): Old analyze() signature still works for backward compatibility.
+ */
+export class HallucinationDetector implements Detector {
+  readonly name = 'hallucination';
+  readonly version = '2.0.0';
+  readonly tier = 1 as const;
+
   private validPackages: Set<string>;
   private options: HallucinationDetectorOptions;
   private ignoreDecorators: boolean;
@@ -336,8 +321,32 @@ export class HallucinationDetector {
     );
   }
 
+  // ─── V3 Unified Interface ───
+
   /**
-   * Analyze a single file for hallucination issues
+   * V3 unified detect method.
+   * Processes multiple files and returns UnifiedIssue[].
+   */
+  async detect(files: FileAnalysis[]): Promise<UnifiedIssue[]> {
+    const allIssues: UnifiedIssue[] = [];
+    let globalIndex = 0;
+
+    for (const file of files) {
+      // Use legacy analyze for the actual detection logic
+      const result = this.analyze(file.path, file.content);
+      for (const issue of result.issues) {
+        allIssues.push(toUnifiedIssue(issue, globalIndex++));
+      }
+    }
+
+    return allIssues;
+  }
+
+  // ─── V2 Legacy Interface (Deprecated) ───
+
+  /**
+   * Analyze a single file for hallucination issues.
+   * @deprecated Use detect(files) instead. Will be removed in v0.4.0.
    */
   analyze(filePath: string, source?: string): HallucinationResult {
     const content = source ?? readFileSync(filePath, 'utf-8');
@@ -348,7 +357,6 @@ export class HallucinationDetector {
     for (const imp of imports) {
       const pkgName = getPackageName(imp.module);
       if (pkgName && !this.validPackages.has(pkgName)) {
-        // Check if it might be a path alias (e.g., @/ or ~/)
         if (pkgName.startsWith('@/') || pkgName.startsWith('~/')) continue;
 
         issues.push({
@@ -365,7 +373,6 @@ export class HallucinationDetector {
     // 2. Check for phantom function references
     const phantomRefs = detectPhantomReferences(content, filePath);
     for (const ref of phantomRefs) {
-      // Skip known framework decorators if ignoreDecorators is enabled
       if (this.ignoreDecorators) {
         const fnName = ref.message.match(/Possible phantom function call: '(\w+)'/)?.[1];
         if (fnName && FRAMEWORK_DECORATORS.has(fnName)) continue;
@@ -373,7 +380,7 @@ export class HallucinationDetector {
       issues.push(ref);
     }
 
-    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
+    // Filter suppressed issues
     const lines = content.split('\n');
     const filteredIssues = issues.filter(issue => {
       if (issue.line <= 0) return true;
@@ -381,21 +388,17 @@ export class HallucinationDetector {
       return !prevLine.includes('// ai-validator-ignore') && !prevLine.includes('// ai-validator-disable');
     });
 
-    // Calculate score: start at 100, deduct for issues
     const errorCount = filteredIssues.filter(i => i.severity === 'error').length;
     const warningCount = filteredIssues.filter(i => i.severity === 'warning').length;
     const deductions = (errorCount * 15) + (warningCount * 5);
     const score = Math.max(0, 100 - deductions);
 
-    return {
-      file: filePath,
-      issues: filteredIssues,
-      score,
-    };
+    return { file: filePath, issues: filteredIssues, score };
   }
 
   /**
-   * Analyze multiple files
+   * Analyze multiple files.
+   * @deprecated Use detect(files) instead. Will be removed in v0.4.0.
    */
   analyzeMany(files: Array<{ path: string; source?: string }>): HallucinationResult[] {
     return files.map(f => this.analyze(f.path, f.source));

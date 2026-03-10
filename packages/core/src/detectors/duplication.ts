@@ -1,12 +1,25 @@
 /**
- * Duplication Detector
+ * Duplication Detector (V3)
  *
  * Detects AI-generated code redundancy patterns:
  * 1. Near-identical function bodies (copy-paste with minor changes)
  * 2. Repeated logic blocks that should be extracted
  * 3. Duplicate import statements
+ *
+ * Implements the unified Detector interface.
+ *
+ * @since 0.2.0 (original)
+ * @since 0.3.0 (V3 unified interface)
  */
 
+import type { Detector, UnifiedIssue, FileAnalysis, Severity } from '../types.js';
+import { AIDefectCategory } from '../types.js';
+
+// ─── Legacy Types (Backward Compatible) ───
+
+/**
+ * @deprecated Use UnifiedIssue instead. Will be removed in v0.4.0.
+ */
 export interface DuplicationIssue {
   type: 'duplicate-function' | 'duplicate-block' | 'duplicate-import';
   severity: 'warning' | 'error';
@@ -17,13 +30,17 @@ export interface DuplicationIssue {
   duplicateOf?: { file: string; line: number };
 }
 
+/**
+ * @deprecated Use UnifiedIssue[] instead. Will be removed in v0.4.0.
+ */
 export interface DuplicationResult {
   file: string;
   issues: DuplicationIssue[];
   score: number;
 }
 
-/** Normalize a code line for comparison */
+// ─── Internal Detection Functions ───
+
 function normalizeLine(line: string): string {
   return line
     .replace(/\/\/.*$/, '')
@@ -32,7 +49,6 @@ function normalizeLine(line: string): string {
     .trim();
 }
 
-/** Extract function bodies as normalized blocks */
 function extractFunctionBlocks(
   lines: string[],
 ): Array<{ name: string; startLine: number; body: string[] }> {
@@ -40,8 +56,6 @@ function extractFunctionBlocks(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Match function declarations, arrow functions, and class methods
-    // Exclude: destructuring (const { x } = ...), object literals (const x = {...}), imports
     const isDestructuring = /(?:const|let|var)\s*\{/.test(line) || /(?:const|let|var)\s*\[/.test(line);
     const isSimpleAssignment = /(?:const|let|var)\s+\w+\s*=\s*[^(=>]/.test(line) && !/(?:async\s*)?\(/.test(line.split('=').slice(1).join('='));
     const funcMatch = !isDestructuring && !isSimpleAssignment ? line.match(
@@ -72,7 +86,6 @@ function extractFunctionBlocks(
   return blocks;
 }
 
-/** Compute similarity ratio between two string arrays (0-1) */
 function computeSimilarity(a: string[], b: string[]): number {
   if (a.length === 0 || b.length === 0) return 0;
   const longer = a.length >= b.length ? a : b;
@@ -84,7 +97,6 @@ function computeSimilarity(a: string[], b: string[]): number {
   return matches / longer.length;
 }
 
-/** Detect duplicate imports */
 function detectDuplicateImports(lines: string[], filePath: string): DuplicationIssue[] {
   const issues: DuplicationIssue[] = [];
   const seenImports = new Map<string, number>();
@@ -113,25 +125,87 @@ function detectDuplicateImports(lines: string[], filePath: string): DuplicationI
   return issues;
 }
 
+// ─── Severity & Category Mapping ───
+
+function mapSeverity(type: DuplicationIssue['type']): Severity {
+  switch (type) {
+    case 'duplicate-function':
+      return 'low'; // Traditional tools cover this; V3 downgrades
+    case 'duplicate-block':
+      return 'low';
+    case 'duplicate-import':
+      return 'info';
+    default:
+      return 'low';
+  }
+}
+
+function toUnifiedIssue(issue: DuplicationIssue, index: number): UnifiedIssue {
+  return {
+    id: `duplication:${index}`,
+    detector: 'duplication',
+    category: AIDefectCategory.DUPLICATION,
+    severity: mapSeverity(issue.type),
+    message: issue.message,
+    file: issue.file,
+    line: issue.line,
+    fix: issue.suggestion ? {
+      description: issue.suggestion,
+      autoFixable: false,
+    } : undefined,
+  };
+}
+
+// ─── Main Detector ───
+
 /**
- * Main Duplication Detector
+ * DuplicationDetector — detects AI-generated code duplication patterns.
+ *
+ * V3: Implements the unified Detector interface.
+ * V2 (deprecated): Old analyze() signature still works.
  */
-export class DuplicationDetector {
+export class DuplicationDetector implements Detector {
+  readonly name = 'duplication';
+  readonly version = '2.0.0';
+  readonly tier = 1 as const;
+
   private similarityThreshold: number;
 
   constructor(similarityThreshold: number = 0.8) {
     this.similarityThreshold = similarityThreshold;
   }
 
-  /** Analyze a single file for duplication issues */
+  // ─── V3 Unified Interface ───
+
+  /**
+   * V3 unified detect method.
+   */
+  async detect(files: FileAnalysis[]): Promise<UnifiedIssue[]> {
+    const allIssues: UnifiedIssue[] = [];
+    let globalIndex = 0;
+
+    for (const file of files) {
+      const result = this.analyze(file.path, file.content);
+      for (const issue of result.issues) {
+        allIssues.push(toUnifiedIssue(issue, globalIndex++));
+      }
+    }
+
+    return allIssues;
+  }
+
+  // ─── V2 Legacy Interface (Deprecated) ───
+
+  /**
+   * Analyze a single file for duplication issues.
+   * @deprecated Use detect(files) instead. Will be removed in v0.4.0.
+   */
   analyze(filePath: string, source: string): DuplicationResult {
     const lines = source.split('\n');
     const rawIssues: DuplicationIssue[] = [];
 
-    // 1. Detect duplicate imports
     rawIssues.push(...detectDuplicateImports(lines, filePath));
 
-    // 2. Detect near-duplicate functions within the same file
     const blocks = extractFunctionBlocks(lines);
     for (let i = 0; i < blocks.length; i++) {
       for (let j = i + 1; j < blocks.length; j++) {
@@ -150,7 +224,6 @@ export class DuplicationDetector {
       }
     }
 
-    // Filter out issues suppressed by // ai-validator-ignore or // ai-validator-disable
     const issues = rawIssues.filter(issue => {
       if (issue.line <= 0) return true;
       const prevLine = lines[issue.line - 2] || '';

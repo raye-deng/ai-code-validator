@@ -95,3 +95,18 @@ export interface ScoringDimensionConfig {
 // ─── Grade ─────────────────────────────────────────────────────────
 
 export type Grade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
+
+// ─── Language Support ──────────────────────────────────────────────
+
+/** Supported programming languages */
+export type SupportedLanguage = 'typescript' | 'javascript' | 'python' | 'java' | 'go' | 'kotlin';
+
+// ─── File Analysis ─────────────────────────────────────────────────
+
+/** Result of analyzing a single file (used by language adapters) */
+export interface FileAnalysis {
+  filePath: string;
+  language: SupportedLanguage;
+  issues: UnifiedIssue[];
+  durationMs: number;
+}
