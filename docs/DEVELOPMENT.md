@@ -27,7 +27,7 @@ pnpm test
 ```
 open-code-review/
 ├── packages/
-│   ├── core/          # npm: @open-code-review/core
+│   ├── core/          # npm: open-code-review-core
 │   ├── cli/           # npm: open-code-review
 │   ├── github-action/ # GitHub Marketplace action
 │   └── gitlab-component/ # GitLab CI Component
@@ -122,7 +122,7 @@ pnpm test
 pnpm -r exec vitest run --coverage
 
 # Run specific test file
-pnpm --filter @open-code-review/core exec vitest run tests/detectors.test.ts
+pnpm --filter open-code-review-core exec vitest run tests/detectors.test.ts
 ```
 
 ## Releasing

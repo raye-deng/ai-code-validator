@@ -50,7 +50,7 @@ import {
   parseNameStatus,
   filterByDiff,
   getScannableFiles,
-} from '@open-code-review/core';
+} from 'open-code-review-core';
 import type {
   ReportFormat,
   FileScore,
@@ -59,7 +59,7 @@ import type {
   SLALevel,
   Locale,
   DiffResult,
-} from '@open-code-review/core';
+} from 'open-code-review-core';
 
 // ─── Constants ─────────────────────────────────────────────────────
 

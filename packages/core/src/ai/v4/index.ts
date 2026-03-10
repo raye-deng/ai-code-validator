@@ -20,7 +20,7 @@
  *   LocalEmbeddingProvider,
  *   OllamaLLMProvider,
  *   DEFECT_PATTERNS,
- * } from '@open-code-review/core';
+ * } from 'open-code-review-core';
  *
  * // Create pipeline for L2 (standard) with local LLM
  * const pipeline = createPipelineForSLA('L2', {

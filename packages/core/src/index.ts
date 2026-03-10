@@ -1,5 +1,5 @@
 /**
- * @open-code-review/core
+ * open-code-review-core
  *
  * Core detection engine for AI-generated code quality validation.
  *
@@ -20,7 +20,7 @@
  *   type Detector,
  *   type FileAnalysis,
  *   AIDefectCategory,
- * } from '@open-code-review/core';
+ * } from 'open-code-review-core';
  *
  * // Register language adapter
  * const registry = LanguageRegistry.getInstance();

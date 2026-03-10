@@ -1,8 +1,8 @@
 {
   "name": "ai-code-validator",
   "version": "0.3.0",
-  "description": "⚠️ DEPRECATED: This package has been renamed to open-code-review. Please install open-code-review instead.",
-  "keywords": ["deprecated", "moved", "open-code-review"],
+  "description": "⚠️ DEPRECATED: This package has been renamed to open-code-review-cli. Please install open-code-review-cli instead.",
+  "keywords": ["deprecated", "moved", "open-code-review-cli"],
   "main": "index.js",
   "license": "MIT",
   "repository": {

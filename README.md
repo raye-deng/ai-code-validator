@@ -1,24 +1,29 @@
 # Open Code Review
 
-> AI-generated code has unique defects. Traditional tools miss them. OCR catches them.
+> The first CI/CD quality gate built for AI-generated code.
+> Free. Self-hostable. Not another linter.
 
-[![npm](https://img.shields.io/npm/v/@open-code-review/cli)](https://www.npmjs.com/package/@open-code-review/cli)
+[![npm](https://img.shields.io/npm/v/open-code-review-cli)](https://www.npmjs.com/package/open-code-review-cli)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![CI](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml/badge.svg)](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml)
 
-## The Problem
+## Why?
 
-AI coding assistants generate code with defects that ESLint, SonarQube, and CodeRabbit can't detect:
+AI coding assistants (Copilot, Cursor, Claude) generate code with **defects that traditional tools miss entirely**:
 
-| Defect | Example | Traditional Tools |
+| Defect | Example | ESLint / SonarQube |
 |--------|---------|-------------------|
-| Hallucinated imports | `import { x } from 'non-existent-pkg'` | ❌ Miss |
-| Stale APIs | Using deprecated APIs from training data | ❌ Miss |
-| Context window artifacts | Logic contradictions across files | ❌ Miss |
-| Over-engineered patterns | Unnecessary abstractions | ❌ Miss |
-| Security anti-patterns | Hardcoded example secrets | ⚠️ Partial |
+| **Hallucinated imports** | `import { x } from 'non-existent-pkg'` | ❌ Miss |
+| **Stale APIs** | Using deprecated APIs from training data | ❌ Miss |
+| **Context window artifacts** | Logic contradictions across files | ❌ Miss |
+| **Over-engineered patterns** | Unnecessary abstractions, dead code | ❌ Miss |
+| **Security anti-patterns** | Hardcoded example secrets, `eval()` | ⚠️ Partial |
 
-## Demo: L2 Self-Scan Report
+Open Code Review detects all of them — in **under 10 seconds**, for **free**, running **100% locally**.
+
+## Demo
+
+### Terminal Output (L2 Self-Scan)
 
 OCR scans itself. Here's what it found:
 
@@ -33,9 +38,7 @@ OCR scans itself. Here's what it found:
   📊 112 issues found in 110 files
 
   Overall Score: 67/100  🟠 D
-  Threshold: 70
-  Status: ❌ FAILED
-
+  Threshold: 70  |  Status: ❌ FAILED
   Files Scanned: 110  |  Languages: typescript  |  Duration: 8.7s
 
   ── Scoring Dimensions ──
@@ -57,13 +60,31 @@ OCR scans itself. Here's what it found:
   ⚪ [info]  pipeline.ts:36         — Unused interface (context window artifact)
 ```
 
-> Full report: [docs/demo-reports/v4-l2/self-scan-terminal.txt](docs/demo-reports/v4-l2/self-scan-terminal.txt)
+Also available as HTML: `ocr scan src/ --format html -o report.html`
+
+📄 [View full HTML report](docs/demo-reports/v4-l2/self-scan.html)
+
+## How It Compares
+
+| | Open Code Review | Claude Code Review | CodeRabbit | GitHub Copilot |
+|---|---|---|---|---|
+| **Price** | **Free** | $15–25/PR | $24/mo/seat | $10–39/mo |
+| **Open Source** | ✅ | ❌ | ❌ | ❌ |
+| **Self-hosted** | ✅ | ❌ | Enterprise | ❌ |
+| **AI Hallucination Detection** | ✅ | ❌ | ❌ | ❌ |
+| **Stale API Detection** | ✅ Specialized | General | ❌ | ❌ |
+| **Local AI (Ollama)** | ✅ | ❌ | ❌ | ❌ |
+| **Registry Verification** | ✅ npm/PyPI | ❌ | ❌ | ❌ |
+| **SARIF Output** | ✅ | ❌ | ❌ | ❌ |
+| **GitHub + GitLab** | ✅ Both | GitHub only | Both | GitHub only |
+| **Review Speed** | <10s (L1) | ~20 min | ~30s | ~30s |
+| **Data Privacy** | ✅ 100% local | ❌ Cloud | ❌ Cloud | ❌ Cloud |
 
 ## Quick Start
 
 ```bash
 # Install
-npm install -g @open-code-review/cli
+npm install -g open-code-review-cli
 
 # Scan your project (L1 — fast, no AI needed)
 ocr scan src/ --sla L1
@@ -72,7 +93,7 @@ ocr scan src/ --sla L1
 ocr scan src/ --sla L2
 ```
 
-## Two-Stage Pipeline
+## Two-Stage Pipeline (L1 + L2)
 
 ```
 L1: Pattern Detection (fast, local, free)
@@ -109,7 +130,7 @@ L2: AI Deep Analysis (Embedding + LLM)
 ```yaml
 code-review:
   script:
-    - npx @open-code-review/cli scan src/ --sla L1 --threshold 60 --format json --output ocr-report.json
+    - npx open-code-review-cli scan src/ --sla L1 --threshold 60 --format json --output ocr-report.json
   artifacts:
     reports:
       codequality: ocr-report.json
@@ -144,10 +165,9 @@ ai:
 
 ```
 packages/
-  core/              # Detection engine + scoring
-  cli/               # CLI tool (ocr command)
+  core/              # Detection engine + scoring (open-code-review-core)
+  cli/               # CLI tool — ocr command (open-code-review-cli)
   github-action/     # GitHub Action wrapper
-  gitlab-component/  # GitLab CI component
 ```
 
 ## Supported Languages

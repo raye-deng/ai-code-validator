@@ -45233,7 +45233,7 @@ class orchestrator_AIOrchestrator {
  *   OpenAIProvider,
  *   AnthropicProvider,
  *   buildAnalysisPrompt,
- * } from '@open-code-review/core';
+ * } from 'open-code-review-core';
  *
  * // Create orchestrator with config
  * const orchestrator = new AIOrchestrator({
@@ -54461,7 +54461,7 @@ function validateSLAConfig(sla, config) {
  *   LocalEmbeddingProvider,
  *   OllamaLLMProvider,
  *   DEFECT_PATTERNS,
- * } from '@open-code-review/core';
+ * } from 'open-code-review-core';
  *
  * // Create pipeline for L2 (standard) with local LLM
  * const pipeline = createPipelineForSLA('L2', {
@@ -54495,7 +54495,7 @@ function validateSLAConfig(sla, config) {
 //# sourceMappingURL=index.js.map
 ;// CONCATENATED MODULE: ../core/dist/index.js
 /**
- * @open-code-review/core
+ * open-code-review-core
  *
  * Core detection engine for AI-generated code quality validation.
  *
@@ -54516,7 +54516,7 @@ function validateSLAConfig(sla, config) {
  *   type Detector,
  *   type FileAnalysis,
  *   AIDefectCategory,
- * } from '@open-code-review/core';
+ * } from 'open-code-review-core';
  *
  * // Register language adapter
  * const registry = LanguageRegistry.getInstance();

@@ -31,7 +31,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build core
-        run: pnpm --filter @open-code-review/core build
+        run: pnpm --filter open-code-review-core build
 
       - name: Open Code Review (dogfood)
         uses: ./packages/github-action

@@ -30,12 +30,12 @@ jobs:
       - name: Build
         run: pnpm -r build
 
-      - name: Publish @open-code-review/core
+      - name: Publish open-code-review-core
         run: cd packages/core && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @open-code-review/cli
+      - name: Publish open-code-review-cli
         run: cd packages/cli && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

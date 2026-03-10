@@ -15,7 +15,7 @@ open-code-review/
     └── web/               # Marketing website (Next.js)
 ```
 
-## Core Engine (`@open-code-review/core`)
+## Core Engine (`open-code-review-core`)
 
 The core package is the heart of the system. It's a pure TypeScript library with no platform-specific dependencies.
 
