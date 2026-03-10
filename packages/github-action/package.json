@@ -1,6 +1,6 @@
 {
   "name": "@open-code-review/github-action",
-  "version": "0.4.0",
+  "version": "1.9.0",
   "private": true,
   "description": "GitHub Action for AI code quality gate — V4 pipeline",
   "main": "./dist/index.js",

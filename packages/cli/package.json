@@ -1,6 +1,6 @@
 {
   "name": "@open-code-review/cli",
-  "version": "0.4.0",
+  "version": "1.9.0",
   "description": "CLI tool for validating AI-generated code quality",
   "type": "module",
   "bin": {
@@ -24,7 +24,7 @@
   "author": "Raye Deng <fengsen.deng@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@open-code-review/core": "workspace:*",
+    "@open-code-review/core": "^1.9.0",
     "glob": "^10.3.0"
   },
   "devDependencies": {

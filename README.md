@@ -1,171 +1,161 @@
-# Open Code Review (OCR)
+# Open Code Review
 
-> The first open-source CI/CD quality gate built specifically for AI-generated code.  
-> Free forever. Self-hostable. Not another linter.
+> AI-generated code has unique defects. Traditional tools miss them. OCR catches them.
 
-[![npm](https://img.shields.io/npm/v/open-code-review)](https://www.npmjs.com/package/open-code-review)
+[![npm](https://img.shields.io/npm/v/@open-code-review/cli)](https://www.npmjs.com/package/@open-code-review/cli)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
+[![CI](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml/badge.svg)](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml)
 
-> **Free for personal use. Commercial use requires a Team or Enterprise license.**
+## The Problem
 
-## Why Open Code Review?
+AI coding assistants generate code with defects that ESLint, SonarQube, and CodeRabbit can't detect:
 
-AI coding assistants (Copilot, Cursor, Claude, ChatGPT) generate code with **unique defects** that traditional tools miss:
+| Defect | Example | Traditional Tools |
+|--------|---------|-------------------|
+| Hallucinated imports | `import { x } from 'non-existent-pkg'` | ❌ Miss |
+| Stale APIs | Using deprecated APIs from training data | ❌ Miss |
+| Context window artifacts | Logic contradictions across files | ❌ Miss |
+| Over-engineered patterns | Unnecessary abstractions | ❌ Miss |
+| Security anti-patterns | Hardcoded example secrets | ⚠️ Partial |
 
-- 🔴 **Hallucinated packages** — `import { x } from 'non-existent-pkg'`
-- 🟠 **Stale APIs from training data** — using deprecated APIs the model "remembers"
-- 🟡 **Context window artifacts** — logic contradictions when the model loses context
-- 🟡 **Over-engineered abstractions** — AI loves unnecessary design patterns
-- 🔵 **Security anti-patterns** — hardcoded example secrets left in production code
+## Demo: L2 Self-Scan Report
 
-**ESLint, SonarQube, and CodeRabbit won't catch these.** They're designed for human-written code.
-
-## How It Works
-
-Two-stage AI pipeline:
+OCR scans itself. Here's what it found:
 
 ```
-Stage 1: Embedding Recall (fast, cheap)
-  Code blocks → Embedding model → Risk scoring → Top-N suspicious blocks
+╔══════════════════════════════════════════════════════════════╗
+║           Open Code Review V4 — Quality Report              ║
+╚══════════════════════════════════════════════════════════════╝
 
-Stage 2: LLM Deep Scan (precise)
-  Suspicious blocks → LLM analysis → Confirmed issues + fix suggestions
+  Project: packages/core/src
+  SLA: L2 Standard — Structural + Embedding + Local AI
+
+  📊 112 issues found in 110 files
+
+  Overall Score: 67/100  🟠 D
+  Threshold: 70
+  Status: ❌ FAILED
+
+  Files Scanned: 110  |  Languages: typescript  |  Duration: 8.7s
+
+  ── Scoring Dimensions ──
+
+  AI Faithfulness           ████████████████████ 35/35 (100%)
+  Code Freshness            ████████████░░░░░░░░ 15/25 (60%)
+  Context Coherence         █████████████████░░░ 17/20 (85%)
+  Implementation Quality    ░░░░░░░░░░░░░░░░░░░░ 0/20 (0%)
+
+  ── Sample Findings ──
+
+  🔴 [error] defect-patterns.ts:269 — Possible hardcoded API key detected
+  🔴 [error] defect-patterns.ts:308 — SQL injection via string concatenation
+  🔴 [error] security-pattern.ts:73  — eval() enables code injection attacks
+  🔴 [error] security-pattern.ts:151 — TLS certificate verification disabled
+  🟡 [warn]  stale-api.ts:51        — url.parse() deprecated → WHATWG URL API
+  🟡 [warn]  over-engineering.ts:37  — Cyclomatic complexity 28 (max: 15)
+  🟡 [warn]  hallucination.ts:58    — Nesting depth 9 (max: 4)
+  ⚪ [info]  pipeline.ts:36         — Unused interface (context window artifact)
 ```
 
-## vs The Competition
-
-| | Claude Code Review | CodeRabbit | GitHub Copilot Review | **Open Code Review** |
-|---|---|---|---|---|
-| **Price** | $15-25/PR | $24/mo/seat | $10-39/mo | **Free** |
-| **Open Source** | ❌ | ❌ | ❌ | **✅ BSL-1.1** |
-| **Self-hosted** | ❌ | ❌ | ❌ | **✅** |
-| **AI Hallucination Detection** | ❌ | ❌ | ❌ | **✅** |
-| **Dynamic Registry Verification** | ❌ | ❌ | ❌ | **✅** |
-| **Local AI (Ollama)** | ❌ | ❌ | ❌ | **✅** |
-| **SARIF Output** | ❌ | ❌ | ❌ | **✅** |
-| **GitLab + GitHub + Any CI** | GitHub only | GitHub/GitLab | GitHub only | **✅ All** |
-| **Focus** | General review | General review | General review | **AI-code defects** |
-
-> We don't replace your code reviewer. We catch what it can't see.
-
-## Real-World Scan Results
-
-Scanned 5 popular open-source repositories across 5 languages with V4 (L1 structural analysis):
-
-### create-t3-app (TypeScript) — Score: 80 / Grade B
-![create-t3-app scan report](docs/demo-reports/v4/create-t3-app/screenshot.png)
-
-### typer (Python) — Score: 74 / Grade C
-![typer scan report](docs/demo-reports/v4/typer/screenshot.png)
-
-### java-design-patterns (Java) — Score: 36 / Grade F
-![java-design-patterns scan report](docs/demo-reports/v4/java-design-patterns/screenshot.png)
-
-### chi (Go) — Score: 70 / Grade C
-![chi scan report](docs/demo-reports/v4/chi/screenshot.png)
-
-### moshi (Kotlin) — Score: 58 / Grade F
-![moshi scan report](docs/demo-reports/v4/moshi/screenshot.png)
-
-> **These are well-maintained, human-written projects.** AI-generated code typically scores lower.  
-> V4 reduced per-file false positives by **88%** compared to V3. See [full comparison →](docs/demo-reports/v4/SUMMARY.md)
+> Full report: [docs/demo-reports/v4-l2/self-scan-terminal.txt](docs/demo-reports/v4-l2/self-scan-terminal.txt)
 
 ## Quick Start
 
 ```bash
-npx open-code-review scan .
+# Install
+npm install -g @open-code-review/cli
 
-# or with short alias
-npx ocr scan .
+# Scan your project (L1 — fast, no AI needed)
+ocr scan src/ --sla L1
+
+# Scan with AI analysis (L2 — requires Ollama or OpenAI)
+ocr scan src/ --sla L2
 ```
 
-## Supported Languages
+## Two-Stage Pipeline
 
-| Language | Parser | Registry |
-|----------|--------|----------|
-| TypeScript / JavaScript | tree-sitter | npm registry |
-| Python | tree-sitter | PyPI |
-| Java | tree-sitter | Maven Central |
-| Go | tree-sitter | Go Proxy |
-| Kotlin | tree-sitter | Maven Central |
+```
+L1: Pattern Detection (fast, local, free)
+├── Hallucinated import detection (npm/PyPI registry check)
+├── Deprecated API detection (AST-based)
+├── Security anti-pattern matching
+├── Over-engineering heuristics
+├── Code duplication analysis
+└── Score: 0-100 with letter grade
 
-## SLA Service Levels
+L2: AI Deep Analysis (Embedding + LLM)
+├── Embedding recall → risk scoring → Top-N suspicious blocks
+├── LLM analysis (Ollama local or OpenAI/Anthropic cloud)
+├── Cross-file context coherence
+├── Semantic duplication detection
+└── Enhanced scoring with AI confidence
+```
 
-| Level | Speed | AI | Best For |
-|-------|-------|----|----------|
-| **L1 Fast** | ≤10s/100 files | Embedding only | PR checks, CI gates |
-| **L2 Standard** | ≤30s/100 files | + Local AI (Ollama) | Daily scans |
-| **L3 Deep** | ≤120s/100 files | + Remote AI (OpenAI/Claude) | Release audits |
-
-## Scoring
-
-4 dimensions focused on AI-specific quality:
-
-| Dimension | Weight | What It Measures |
-|-----------|--------|-----------------|
-| AI Faithfulness | 35% | Do imports/APIs actually exist? |
-| Code Freshness | 25% | Are APIs current, not deprecated? |
-| Context Coherence | 20% | Is logic consistent across the file? |
-| Implementation Quality | 20% | Complete? Error handling? Over-engineered? |
-
-Grades: **A+** (95-100) → **F** (0-59)
-
-## CI Integration
+## CI/CD Integration
 
 ### GitHub Action
+
 ```yaml
-- uses: raye-deng/open-code-review@v3
+- uses: raye-deng/open-code-review@v1
   with:
-    license: ${{ secrets.OCR_LICENSE }}
+    sla: L1
+    threshold: 60
+    scan-mode: diff
+    github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### GitLab CI
+
 ```yaml
-include:
-  - remote: 'https://codes.evallab.ai/ci/gitlab-component.yml'
+code-review:
+  script:
+    - npx @open-code-review/cli scan src/ --sla L1 --threshold 60 --format json --output ocr-report.json
+  artifacts:
+    reports:
+      codequality: ocr-report.json
 ```
 
-## Configuration
+### CLI
+
+```bash
+ocr scan src/ --sla L1 --format terminal    # Pretty output
+ocr scan src/ --sla L1 --format json        # JSON for CI
+ocr scan src/ --sla L1 --format sarif       # SARIF for GitHub
+ocr scan src/ --sla L1 --format html        # HTML report
+```
+
+## L2 Configuration (Ollama)
 
 ```yaml
 # .ocrrc.yml
-scan:
-  languages: [typescript, python, java, go, kotlin]
-  sla: L2
-registry:
-  npm: { url: 'https://registry.npmjs.org' }
-  pypi: { url: 'https://pypi.org' }
-  maven: { url: 'https://repo1.maven.org/maven2' }
-  # Enterprise? Point to your internal registry:
-  # npm: { url: 'https://nexus.internal.com/repository/npm/', token: '...' }
+sla: L2
 ai:
-  local: { provider: ollama, model: codellama:13b }
-  remote: { provider: openai, model: gpt-4o-mini }
-  strategy: local-first
+  embedding:
+    provider: ollama
+    model: nomic-embed-text
+    baseUrl: http://localhost:11434
+  llm:
+    provider: ollama
+    model: qwen3-coder
+    endpoint: http://localhost:11434
 ```
 
 ## Project Structure
 
-This repository contains the CLI tool, Core library, and CI/CD integrations:
-
 ```
 packages/
-├── cli/              # open-code-review CLI
-├── core/             # Core scanning engine
-├── github-action/    # GitHub Action
-├── gitlab-component/ # GitLab CI component
-├── worker/           # Cloudflare Worker (API)
-└── deprecated-redirect/
+  core/              # Detection engine + scoring
+  cli/               # CLI tool (ocr command)
+  github-action/     # GitHub Action wrapper
+  gitlab-component/  # GitLab CI component
 ```
 
-> **Note:** The Web Portal (codes.evallab.ai) is maintained in a separate private repository.
+## Supported Languages
 
-## Philosophy
-
-- **Don't reinvent the wheel.** ESLint handles formatting. SonarQube handles complexity. We handle what AI breaks.
-- **Open by default.** BSL-1.1 license (free for personal use, Apache 2.0 after 4 years), no vendor lock-in, runs on your hardware.
-- **AI understands AI.** We use embeddings + LLM to detect issues only AI would create.
+TypeScript, JavaScript, Python, Go, Java, Kotlin (more coming)
 
 ## License
 
-[Business Source License 1.1](LICENSE) — free for personal and non-commercial use. Commercial use requires a [Team or Enterprise license](https://codes.evallab.ai/pricing). Code becomes Apache 2.0 on 2030-03-11.
+[BSL-1.1](LICENSE) — Free for personal and non-commercial use.
+Converts to Apache 2.0 on 2030-03-11.
+Commercial use requires a [Team or Enterprise license](https://codes.evallab.ai/pricing).
