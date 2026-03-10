@@ -1,0 +1,146 @@
+[
+  {
+    "api": "java.util.Date constructor",
+    "pattern": "new\\s+Date\\(",
+    "replacement": "LocalDateTime / ZonedDateTime",
+    "deprecated_since": "Java 1.1+",
+    "severity": "medium",
+    "reason": "Most java.util.Date constructors are deprecated; use java.time API (LocalDateTime, ZonedDateTime) instead"
+  },
+  {
+    "api": "java.util.Vector",
+    "pattern": "\\bVector\\b\\s*<|new\\s+Vector\\b|\\bVector\\s+\\w+",
+    "replacement": "ArrayList or CopyOnWriteArrayList",
+    "deprecated_since": "Java 1.2 (legacy)",
+    "severity": "medium",
+    "reason": "Vector is a legacy synchronized collection; use ArrayList (+ external sync) or CopyOnWriteArrayList"
+  },
+  {
+    "api": "java.util.Hashtable",
+    "pattern": "\\bHashtable\\b\\s*<|new\\s+Hashtable\\b|\\bHashtable\\s+\\w+",
+    "replacement": "HashMap or ConcurrentHashMap",
+    "deprecated_since": "Java 1.2 (legacy)",
+    "severity": "medium",
+    "reason": "Hashtable is a legacy synchronized map; use HashMap or ConcurrentHashMap instead"
+  },
+  {
+    "api": "java.util.Stack",
+    "pattern": "\\bStack\\b\\s*<|new\\s+Stack\\b|\\bStack\\s+\\w+",
+    "replacement": "Deque (ArrayDeque)",
+    "deprecated_since": "Java 1.6 (legacy)",
+    "severity": "medium",
+    "reason": "Stack extends Vector and is legacy; use Deque (ArrayDeque) instead"
+  },
+  {
+    "api": "Thread.stop()",
+    "pattern": "\\.stop\\(\\)",
+    "replacement": "Cooperative thread interruption (Thread.interrupt())",
+    "deprecated_since": "Java 1.2",
+    "severity": "critical",
+    "reason": "Thread.stop() is inherently unsafe — it releases all locks and can leave objects in inconsistent states"
+  },
+  {
+    "api": "Thread.suspend()",
+    "pattern": "\\.suspend\\(\\)",
+    "replacement": "Use wait/notify or Lock/Condition",
+    "deprecated_since": "Java 1.2",
+    "severity": "critical",
+    "reason": "Thread.suspend() is deadlock-prone; use wait/notify or java.util.concurrent mechanisms"
+  },
+  {
+    "api": "Thread.resume()",
+    "pattern": "\\.resume\\(\\)",
+    "replacement": "Use wait/notify or Lock/Condition",
+    "deprecated_since": "Java 1.2",
+    "severity": "critical",
+    "reason": "Thread.resume() is deadlock-prone; use wait/notify or java.util.concurrent mechanisms"
+  },
+  {
+    "api": "Runtime.exec(String)",
+    "pattern": "Runtime\\.getRuntime\\(\\)\\.exec\\(|runtime\\.exec\\(",
+    "replacement": "ProcessBuilder",
+    "deprecated_since": "Java 18+",
+    "severity": "high",
+    "reason": "Runtime.exec(String) has security and escaping issues; use ProcessBuilder for better control"
+  },
+  {
+    "api": "URLEncoder.encode(String)",
+    "pattern": "URLEncoder\\.encode\\([^,)]+\\)",
+    "replacement": "URLEncoder.encode(String, StandardCharsets.UTF_8)",
+    "deprecated_since": "Java 10",
+    "severity": "medium",
+    "reason": "The single-argument URLEncoder.encode(String) uses platform default charset; always specify charset"
+  },
+  {
+    "api": "System.gc()",
+    "pattern": "System\\.gc\\(\\)",
+    "replacement": "(remove — let JVM manage GC)",
+    "deprecated_since": "Best practice",
+    "severity": "medium",
+    "reason": "Calling System.gc() is unreliable and can hurt performance; let the JVM manage garbage collection"
+  },
+  {
+    "api": "finalize()",
+    "pattern": "\\bfinalize\\s*\\(\\s*\\)",
+    "replacement": "Cleaner or try-with-resources (AutoCloseable)",
+    "deprecated_since": "Java 9",
+    "severity": "high",
+    "reason": "Object.finalize() is deprecated since Java 9; use Cleaner, PhantomReference, or AutoCloseable"
+  },
+  {
+    "api": "StringBuffer",
+    "pattern": "\\bStringBuffer\\b",
+    "replacement": "StringBuilder",
+    "deprecated_since": "Best practice (Java 5+)",
+    "severity": "low",
+    "reason": "StringBuffer is synchronized and slower; use StringBuilder for single-threaded string building"
+  },
+  {
+    "api": "javax.servlet (old namespace)",
+    "pattern": "javax\\.servlet",
+    "replacement": "jakarta.servlet (Jakarta EE 9+)",
+    "deprecated_since": "Jakarta EE 9 (2020)",
+    "severity": "medium",
+    "reason": "javax.servlet namespace was migrated to jakarta.servlet in Jakarta EE 9+"
+  },
+  {
+    "api": "Thread.destroy()",
+    "pattern": "\\.destroy\\(\\)",
+    "replacement": "Cooperative thread shutdown",
+    "deprecated_since": "Java 1.5",
+    "severity": "critical",
+    "reason": "Thread.destroy() was never implemented and throws NoSuchMethodError; use cooperative shutdown"
+  },
+  {
+    "api": "System.runFinalizersOnExit",
+    "pattern": "System\\.runFinalizersOnExit|Runtime\\.runFinalizersOnExit",
+    "replacement": "Runtime shutdown hooks (addShutdownHook)",
+    "deprecated_since": "Java 1.2",
+    "severity": "high",
+    "reason": "runFinalizersOnExit is inherently unsafe; use shutdown hooks instead"
+  },
+  {
+    "api": "Date.getYear()",
+    "pattern": "\\.getYear\\(\\)",
+    "replacement": "Calendar.get(Calendar.YEAR) or LocalDate.getYear()",
+    "deprecated_since": "Java 1.1",
+    "severity": "medium",
+    "reason": "Date.getYear() returns year minus 1900; use Calendar or java.time API"
+  },
+  {
+    "api": "Date.getMonth()",
+    "pattern": "\\.getMonth\\(\\)",
+    "replacement": "Calendar.get(Calendar.MONTH) or LocalDate.getMonthValue()",
+    "deprecated_since": "Java 1.1",
+    "severity": "medium",
+    "reason": "Date.getMonth() returns 0-based month; use Calendar or java.time API"
+  },
+  {
+    "api": "Date.getDate()",
+    "pattern": "\\.getDate\\(\\)",
+    "replacement": "Calendar.get(Calendar.DAY_OF_MONTH) or LocalDate.getDayOfMonth()",
+    "deprecated_since": "Java 1.1",
+    "severity": "medium",
+    "reason": "Date.getDate() is deprecated; use Calendar or java.time API"
+  }
+]
