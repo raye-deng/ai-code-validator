@@ -114,12 +114,12 @@
 | 4.3 | OpenAI/Anthropic 集成 | `packages/core/src/ai/openai-provider.ts`, `anthropic-provider.ts` | ✅ |
 | 4.4 | Prompt 模板（多语言） | `packages/core/src/ai/prompts.ts` | ✅ |
 | 4.5 | Result Fusion 引擎 | `packages/core/src/ai/fusion.ts` | ⬜ |
-| 4.6 | HTML 报告 (Lighthouse 风格) | `packages/core/src/reporter/html.ts` | ⬜ |
-| 4.7 | Terminal 报告升级 | `packages/core/src/reporter/terminal.ts` | ⬜ |
-| 4.8 | Markdown 报告升级 | `packages/core/src/reporter/markdown.ts` | ⬜ |
-| 4.9 | SARIF 输出 | `packages/core/src/reporter/sarif.ts` | ⬜ |
-| 4.10 | Kotlin LanguageAdapter | `packages/core/src/languages/kotlin/` | ⬜ |
-| 4.11 | SLA 指标嵌入所有报告 | 各 reporter | ⬜ |
+| 4.6 | HTML 报告 (Lighthouse 风格) | `packages/core/src/reporter/html-reporter.ts` | ✅ |
+| 4.7 | Terminal 报告升级 | `packages/core/src/reporter/terminal-reporter.ts` | ✅ |
+| 4.8 | Markdown 报告升级 | `packages/core/src/reporter/markdown-reporter.ts` | ✅ |
+| 4.9 | SARIF 输出 | `packages/core/src/reporter/sarif-reporter.ts` | ✅ |
+| 4.10 | Kotlin LanguageAdapter | `packages/core/src/languages/kotlin/` | ✅ |
+| 4.11 | SLA 指标嵌入所有报告 | 各 reporter | ✅ |
 
 ### 验收标准
 - [ ] `--ai local` 使用 Ollama 分析
