@@ -1,6 +1,6 @@
 {
   "name": "@opencodereview/core",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Core detection engine for AI-generated code validation",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
