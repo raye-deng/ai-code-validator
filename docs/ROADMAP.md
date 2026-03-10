@@ -82,8 +82,8 @@
 
 | # | 任务 | 文件/模块 | 状态 |
 |---|------|----------|------|
-| 3.1 | License Key 生成/验证模块 | `packages/core/src/license/` | ⬜ |
-| 3.2 | CLI `login` 命令 | `packages/cli/src/commands/login.ts` | ⬜ |
+| 3.1 | License Key 生成/验证模块 | `packages/core/src/license/` | ✅ |
+| 3.2 | CLI `login` 命令 + `config` 命令 + `--license` 参数 | `packages/cli/src/index.ts` | ✅ |
 | 3.3 | Directus 数据模型配置 | `apps/web/directus/` (schema) | ⬜ |
 | 3.4 | Portal: NextAuth.js 认证 | `apps/web/src/app/api/auth/` | ⬜ |
 | 3.5 | Portal: /login + /register | `apps/web/src/app/(auth)/` | ⬜ |
