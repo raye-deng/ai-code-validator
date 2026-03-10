@@ -1,29 +1,78 @@
 spec:
   inputs:
+    sla:
+      default: 'L1'
+      description: 'Scan level: L1 (structural), L2 (+ embedding), L3 (+ LLM)'
     threshold:
       default: 70
       description: 'Minimum quality score (0-100) to pass'
     paths:
       default: 'src'
-      description: 'Paths to scan'
+      description: 'Paths to scan (comma-separated)'
+    scan-mode:
+      default: 'diff'
+      description: 'Scan mode: diff (changed files in MR) or full'
+    ollama-url:
+      default: ''
+      description: 'Ollama API URL for L2/L3 (optional)'
     node-image:
       default: 'node:20-slim'
       description: 'Docker image to use'
 
 ---
 
-ai-code-validate:
+open-code-review:
   stage: test
   image: $[[ inputs.node-image ]]
+  variables:
+    OCR_SLA: $[[ inputs.sla ]]
+    OCR_THRESHOLD: $[[ inputs.threshold ]]
+    OCR_SCAN_MODE: $[[ inputs.scan-mode ]]
+    OCR_OLLAMA_URL: $[[ inputs.ollama-url ]]
+    OCR_PATHS: $[[ inputs.paths ]]
   script:
     - npm install -g open-code-review
-    - open-code-review scan "$[[ inputs.paths ]]/**/*.ts" "$[[ inputs.paths ]]/**/*.js"
-        --threshold $[[ inputs.threshold ]]
-        --format gitlab-report
-        --output ai-validator-report.json
+    - |
+      if [ "$OCR_SCAN_MODE" = "diff" ] && [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        # MR diff mode: only scan changed files
+        git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+        CHANGED_FILES=$(git diff --name-only "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"...HEAD | grep -E '\.(ts|tsx|js|jsx|py|java|go|kt)$' || true)
+        if [ -z "$CHANGED_FILES" ]; then
+          echo "No scannable files changed in this MR"
+          echo '{"score":100,"grade":"A","issues":[]}' > ocr-report.json
+          exit 0
+        fi
+        echo "Scanning $(echo "$CHANGED_FILES" | wc -l) changed files..."
+        echo "$CHANGED_FILES" | xargs open-code-review scan \
+          --sla "$OCR_SLA" \
+          --threshold "$OCR_THRESHOLD" \
+          --format json \
+          --output ocr-report.json \
+          ${OCR_OLLAMA_URL:+--ollama-url "$OCR_OLLAMA_URL"}
+      else
+        # Full scan mode
+        IFS=',' read -ra SCAN_PATHS <<< "$OCR_PATHS"
+        open-code-review scan "${SCAN_PATHS[@]}" \
+          --sla "$OCR_SLA" \
+          --threshold "$OCR_THRESHOLD" \
+          --format json \
+          --output ocr-report.json \
+          ${OCR_OLLAMA_URL:+--ollama-url "$OCR_OLLAMA_URL"}
+      fi
+    - |
+      # Parse score and post to MR note
+      SCORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('ocr-report.json','utf8')).score || 0)")
+      GRADE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('ocr-report.json','utf8')).grade || 'F')")
+      echo "Score: $SCORE/100 (Grade: $GRADE)"
+      if [ "$SCORE" -lt "$OCR_THRESHOLD" ]; then
+        echo "FAILED: Score $SCORE is below threshold $OCR_THRESHOLD"
+        exit 1
+      fi
   artifacts:
     reports:
-      codequality: ai-validator-report.json
+      codequality: ocr-report.json
+    paths:
+      - ocr-report.json
     when: always
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

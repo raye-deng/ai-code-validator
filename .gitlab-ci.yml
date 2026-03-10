@@ -64,3 +64,32 @@ validate:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ─── Open Code Review (V4 self-scan) ───
+
+open-code-review:
+  stage: test
+  image: node:20-slim
+  script:
+    - npm install -g open-code-review
+    - |
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+        CHANGED=$(git diff --name-only "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"...HEAD | grep -E '\.(ts|tsx)$' || true)
+        if [ -n "$CHANGED" ]; then
+          echo "$CHANGED" | xargs open-code-review scan --sla L1 --threshold 60 --format json --output ocr-report.json
+        else
+          echo "No scannable files changed"
+          echo '{"score":100,"grade":"A","issues":[]}' > ocr-report.json
+        fi
+      else
+        open-code-review scan packages/*/src --sla L1 --threshold 60 --format json --output ocr-report.json
+      fi
+  artifacts:
+    reports:
+      codequality: ocr-report.json
+    when: always
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
