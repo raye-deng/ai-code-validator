@@ -1,6 +1,6 @@
 {
   "name": "open-code-review-cli",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "CLI tool for validating AI-generated code quality",
   "type": "module",
   "bin": {
@@ -8,8 +8,12 @@
     "ocr": "./dist/index.js"
   },
   "main": "./dist/index.js",
-  "files": ["dist"],
-  "publishConfig": { "access": "public" },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
