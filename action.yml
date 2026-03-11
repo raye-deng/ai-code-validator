@@ -1,39 +1,44 @@
 name: 'Open Code Review'
-description: 'CI/CD quality gate for AI-generated code'
+description: 'AI code quality gate — detect hallucinations, stale APIs, logic gaps in PRs'
 author: 'raye-deng'
+
 branding:
   icon: 'shield'
-  color: 'pink'
-runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  color: 'purple'
 
 inputs:
-  threshold:
-    description: 'Minimum quality score to pass (0-100)'
-    required: true
-    default: '70'
-  paths:
-    description: 'Glob pattern for files to scan'
-    required: true
-    default: 'src/**/*.{ts,js,tsx,jsx}'
-  model:
-    description: 'AI model to use (openai, anthropic, glm)'
+  sla:
+    description: 'Scan level: L1 (structural), L2 (+ embedding), L3 (+ LLM deep scan)'
     required: false
-    default: 'openai'
-  fail-on-issues:
-    description: 'Fail the workflow if issues are found'
+    default: 'L1'
+  threshold:
+    description: 'Minimum score to pass (0-100)'
+    required: false
+    default: '70'
+  scan-mode:
+    description: 'Scan mode: diff (changed files only) or full'
+    required: false
+    default: 'diff'
+  ollama-url:
+    description: 'Ollama API URL for local AI (L2/L3). If not provided, L2 uses TF-IDF fallback.'
+    required: false
+  fail-on-low-score:
+    description: 'Fail workflow if score is below threshold'
     required: false
     default: 'true'
-  format:
-    description: 'Output format (text, json, sarif)'
+  github-token:
+    description: 'GitHub token for PR comments'
     required: false
-    default: 'sarif'
+    default: '${{ github.token }}'
 
 outputs:
   score:
-    description: 'Overall quality score (0-100)'
+    description: 'Quality score (0-100)'
+  grade:
+    description: 'Letter grade (A-F)'
   issues-count:
-    description: 'Number of issues found'
-  report-path:
-    description: 'Path to report file'
+    description: 'Total issues found'
+
+runs:
+  using: 'node20'
+  main: 'packages/github-action/dist/index.js'
