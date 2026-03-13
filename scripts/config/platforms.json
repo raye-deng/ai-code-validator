@@ -1,11 +1,26 @@
 {
   "devto": {
-    "status": "not_configured",
-    "api_key_needed": true,
-    "setup_url": "https://dev.to/settings/integrations",
-    "instructions": "1. Go to dev.to Settings > Integrations > DEV Community API Keys\n2. Generate a new API key\n3. Add to this config as apiKey\n4. Article draft ready at promotion/content/devto-article.md",
+    "status": "published",
+    "account": "raye_deng_622ab98e19a2147",
+    "article_id": 3347973,
     "article_title": "Open Code Review: The Missing Quality Gate for AI-Generated Code",
-    "article_path": "promotion/content/devto-article.md"
+    "article_url": "https://dev.to/raye_deng_622ab98e19a2147/open-code-review-the-missing-quality-gate-for-ai-generated-code-1p9j",
+    "published_at": "2026-03-13T12:09:33Z",
+    "tags": ["ai", "codequality", "ci", "devtools"],
+    "reading_time_minutes": 3,
+    "article_path": "promotion/content/devto-article.md",
+    "previous_articles": [
+      {
+        "id": 3344321,
+        "url": "https://dev.to/raye_deng_622ab98e19a2147/eslint-cant-catch-this-5-failure-modes-unique-to-ai-generated-code-and-how-i-detect-them-in-ci-hl",
+        "title": "ESLint Can't Catch This: 5 Failure Modes Unique to AI-Generated Code"
+      },
+      {
+        "id": 3344330,
+        "url": "https://dev.to/raye_deng_622ab98e19a2147/your-brand-is-invisible-to-ai-heres-how-to-check-and-fix-it-2ap",
+        "title": "Your Brand is Invisible to AI — Here's How to Check and Fix It"
+      }
+    ]
   },
   "reddit": {
     "status": "not_configured",
@@ -19,7 +34,7 @@
     "status": "blocked",
     "account": "aneyadeng",
     "karma": 1,
-    "issue": "HN temporarily restricting Show HN for low-karma accounts (as of 2026-03-13)",
+    "issue": "HN restricting Show HN for low-karma accounts (as of 2026-03-13)",
     "recommendation": "Build karma by commenting on discussions for 1-2 weeks, then submit Show HN. Alternatively try submitting as regular story.",
     "post_path": "promotion/content/hackernews-show.md"
   },
@@ -27,5 +42,6 @@
     "status": "not_configured",
     "credentials_needed": true,
     "instructions": "Twitter API requires developer account. Consider posting manually."
-  }
+  },
+  "last_updated": "2026-03-13T20:09:00+08:00"
 }
