@@ -12,6 +12,8 @@
 [![GitHub Stars](https://img.shields.io/github/stars/raye-deng/open-code-review?style=flat-square)](https://github.com/raye-deng/open-code-review)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
+<!-- SEO keywords: code review, AI code quality, CI/CD, code analysis, hallucination detection, static analysis, AI-generated code, code security, quality gate, SARIF -->
+
 ## Why?
 
 AI coding assistants (Copilot, Cursor, Claude) generate code with **defects that traditional tools miss entirely**:
@@ -77,6 +79,26 @@ $ npx @opencodereview/cli scan src/ --sla L1
 | **Review Speed** | <10s (L1) | ~20 min | ~30s | ~30s |
 | **Data Privacy** | ✅ 100% local | ❌ Cloud | ❌ Cloud | ❌ Cloud |
 
+## Who Is This For?
+
+- **Teams using AI coding assistants** — Copilot, Cursor, Claude Code, Codex, or any LLM-based tool that generates production code
+- **Open-source maintainers** — Review AI-generated PRs for hallucinated imports, stale APIs, and security anti-patterns before merging
+- **DevOps / Platform engineers** — Add a quality gate to CI/CD pipelines without sending code to cloud services
+- **Security-conscious teams** — Run everything locally (Ollama), keep your code on your machines
+- **Solo developers** — Free, fast, and works with zero configuration (`npx @opencodereview/cli scan src/`)
+
+## Why Open Code Review?
+
+Traditional linters (ESLint, SonarQube, Pylint) check **code style** and **known patterns**. They were built for human-written code. AI-generated code has a completely different class of defects:
+
+- **Hallucinated packages** — AI invents import paths that don't exist on npm/PyPI/Maven
+- **Training data staleness** — AI uses APIs deprecated years ago because they were in its training cutoff
+- **Context window artifacts** — Logic contradictions when a conversation generates code across multiple files
+- **Over-engineering** — AI adds unnecessary abstractions, dead code, and excessive error handling
+- **Security anti-patterns** — Hardcoded example secrets, `eval()`, SQL injection patterns
+
+Open Code Review catches these **before they reach production**, in under 10 seconds, running 100% locally.
+
 ## Quick Start
 
 ```bash
@@ -112,10 +134,6 @@ L2: AI Deep Analysis (Embedding + LLM)
 ## CI/CD Integration
 
 ### Add to Your Repo in 30 Seconds
-
-[![npm version](https://img.shields.io/npm/v/@opencodereview/cli?style=flat-square)](https://www.npmjs.com/package/@opencodereview/cli)
-[![CI](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml/badge.svg)](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml)
-[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 
 Copy this snippet into your `.github/workflows/ci.yml`:
 

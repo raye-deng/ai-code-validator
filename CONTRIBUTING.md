@@ -65,15 +65,15 @@ Open an issue with the `enhancement` label. Describe:
 
 Open Code Review uses pattern-based detection. To add a new rule:
 
-1. Find the relevant rule file in `packages/core/src/rules/`
-2. Add your pattern with tests
+1. Find the relevant detector in `packages/core/src/detectors/`
+2. Add your pattern with tests in `packages/core/tests/`
 3. Update documentation in `docs/`
 
 ### Add Language Support
 
 1. Create a new parser in `packages/core/src/languages/`
-2. Add test fixtures in `packages/core/src/__tests__/fixtures/`
-3. Register the language in the language registry
+2. Create a new extractor in `packages/core/src/parser/extractors/`
+3. Register the language in `packages/core/src/languages/registry.ts`
 
 ## Code Style
 

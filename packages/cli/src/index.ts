@@ -66,7 +66,7 @@ import type {
 
 // ─── Constants ─────────────────────────────────────────────────────
 
-const VERSION = '0.4.0';
+const VERSION = '2.0.2';
 
 // ─── Environment Variable Helpers ──────────────────────────────────
 
@@ -485,7 +485,7 @@ function renderV4Json(result: V4ScanResult, score?: V4ScoreResult): string {
 function renderV4Sarif(result: V4ScanResult): string {
   const sarif = {
     $schema: 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json',
-    version: '2.1.0',
+    version: VERSION,
     runs: [{
       tool: {
         driver: {
