@@ -1,7 +1,7 @@
 {
   "name": "@opencodereview/core",
-  "version": "2.0.1",
-  "description": "Core detection engine for AI-generated code — hallucinated packages, phantom dependencies, stale APIs, security anti-patterns. Structural, embedding, and LLM scanning.",
+  "version": "2.0.2",
+  "description": "Core detection engine for AI-generated code \u2014 hallucinated packages, phantom dependencies, stale APIs, security anti-patterns. Structural, embedding, and LLM scanning.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
