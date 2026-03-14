@@ -1,5 +1,5 @@
 name: 'Open Code Review'
-description: 'AI code quality gate — detect hallucinations, stale APIs, logic gaps in PRs'
+description: 'AI code quality gate for pull requests — detect hallucinated packages, phantom dependencies, stale APIs, and logic gaps. Free, open-source, runs locally with Ollama (zero API cost). Supports SARIF, L1/L2/L3 scan levels, and diff-only mode.'
 author: 'open-code-review'
 
 branding:
@@ -8,36 +8,44 @@ branding:
 
 inputs:
   sla:
-    description: 'Scan level: L1 (structural), L2 (+ embedding), L3 (+ LLM deep scan)'
+    description: 'Scan level: L1 (structural, fast), L2 (+ embedding recall), L3 (+ LLM deep scan)'
     required: false
     default: 'L1'
   threshold:
-    description: 'Minimum score to pass (0-100)'
+    description: 'Minimum quality score to pass (0-100). Fails the workflow if score is below this value.'
     required: false
     default: '70'
   scan-mode:
-    description: 'Scan mode: diff (changed files only) or full'
+    description: 'Scan mode: "diff" (changed files only, fast) or "full" (entire repo)'
     required: false
     default: 'diff'
   ollama-url:
-    description: 'Ollama API URL for local AI (L2/L3). If not provided, L2 uses TF-IDF fallback.'
+    description: 'Ollama API URL for local L2/L3 AI (e.g. http://localhost:11434). If not provided, L2 uses TF-IDF fallback.'
     required: false
   fail-on-low-score:
-    description: 'Fail workflow if score is below threshold'
+    description: 'Fail the GitHub Actions workflow when the quality score is below the threshold'
     required: false
     default: 'true'
   github-token:
-    description: 'GitHub token for PR comments'
+    description: 'GitHub token for posting PR comments. Defaults to the automatic GITHUB_TOKEN.'
     required: false
     default: '${{ github.token }}'
+  exclude:
+    description: 'Glob patterns to exclude from scanning (comma-separated). Example: "**/test/**,**/*.test.*"'
+    required: false
+    default: ''
+  report-path:
+    description: 'Path to write the JSON report file. Default: ocr-report.json in the workspace root.'
+    required: false
+    default: 'ocr-report.json'
 
 outputs:
   score:
-    description: 'Quality score (0-100)'
+    description: 'Overall quality score (0-100)'
   grade:
-    description: 'Letter grade (A-F)'
+    description: 'Letter grade (A through F)'
   issues-count:
-    description: 'Total issues found'
+    description: 'Total number of issues found'
 
 runs:
   using: 'node20'
