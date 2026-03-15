@@ -1,0 +1,8 @@
+# Open Code Review
+
+When coding:
+- Run `npx @opencodereview/cli scan ./src --sla L1` to check for AI code defects
+- Focus on: hallucinated imports, stale APIs, context breaks, security anti-patterns, over-engineering
+- Use `--diff` mode for PR reviews
+
+MCP: npx @opencodereview/mcp-server

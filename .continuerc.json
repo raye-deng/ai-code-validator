@@ -1,0 +1,11 @@
+{
+  "allowAnonymousTelemetry": false,
+  "models": [],
+  "tabAutocompleteModel": {},
+  "slashCommands": [
+    {
+      "name": "ocr-scan",
+      "description": "Run Open Code Review scan on current project"
+    }
+  ]
+}

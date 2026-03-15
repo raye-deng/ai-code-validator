@@ -1,0 +1,9 @@
+# Open Code Review Integration
+
+When modifying code:
+1. Before committing, run: `npx @opencodereview/cli scan ./src --sla L1`
+2. Fix any critical/high severity issues before finalizing
+3. For PR reviews, run: `npx @opencodereview/cli scan . --diff --base origin/main --head HEAD`
+
+MCP Server available: npx @opencodereview/mcp-server
+Tools: scan_directory, scan_diff, explain_issue, heal_code
