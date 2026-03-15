@@ -24,8 +24,8 @@ importers:
   packages/cli:
     dependencies:
       '@opencodereview/core':
-        specifier: workspace:^
-        version: link:../core
+        specifier: ^2.1.1
+        version: 2.1.1
       glob:
         specifier: ^10.3.0
         version: 10.5.0
@@ -850,6 +850,9 @@ packages:
 
   '@octokit/types@13.10.0':
     resolution: {integrity: sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA==}
+
+  '@opencodereview/core@2.1.1':
+    resolution: {integrity: sha512-ye8tyIitnZIuycD+IYgjyVbNwpCeUpmm81U1+6bm7Rk6CzY2m05jT/9Zule6gHoBvDPcpzWBhy0w9J+MXNB+Gw==}
 
   '@oxc-parser/binding-android-arm-eabi@0.117.0':
     resolution: {integrity: sha512-XarGPJpaobgKjfm7xRfCGWWszuPbm/OeP91NdMhxtcLZ/qLTmWF0P0z0gqmr0Uysi1F1v1BNtcST11THMrcEOw==}
@@ -2494,6 +2497,16 @@ snapshots:
   '@octokit/types@13.10.0':
     dependencies:
       '@octokit/openapi-types': 24.2.0
+
+  '@opencodereview/core@2.1.1':
+    dependencies:
+      acorn: 8.16.0
+      acorn-walk: 8.3.5
+      glob: 10.5.0
+      oxc-parser: 0.117.0
+      tree-sitter-wasms: 0.1.13
+      web-tree-sitter: 0.24.7
+      yaml: 2.8.2
 
   '@oxc-parser/binding-android-arm-eabi@0.117.0':
     optional: true
