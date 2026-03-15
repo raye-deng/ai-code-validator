@@ -53,6 +53,10 @@ import {
   parseNameStatus,
   filterByDiff,
   getScannableFiles,
+  // AI Healer
+  AutoFixEngine,
+  IDERulesGenerator,
+  HealReporter,
 } from '@opencodereview/core';
 import type {
   ReportFormat,
@@ -62,6 +66,7 @@ import type {
   SLALevel,
   Locale,
   DiffResult,
+  AggregateScore,
 } from '@opencodereview/core';
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -109,6 +114,10 @@ interface ParsedArgs {
   diff?: boolean;
   base?: string;
   head?: string;
+  // Heal options
+  dryRun?: boolean;
+  setupIde?: boolean;
+  outputPrompts?: string;
   // V3 options
   threshold: number;
   output?: string;
@@ -146,6 +155,9 @@ function parseArgs(argv: string[]): ParsedArgs {
   let diff = false;
   let base: string | undefined;
   let head: string | undefined;
+  let dryRun = false;
+  let setupIde = false;
+  let outputPrompts: string | undefined;
 
   // Handle config subcommand
   if (command === 'config') {
@@ -159,6 +171,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       configKey, configValue, sla, locale, format, configPath, offline,
       include, exclude, aiLocalModel, aiLocalUrl, aiRemoteProvider,
       aiRemoteModel, aiRemoteKey, noScore, json, diff, base, head,
+      dryRun, setupIde, outputPrompts,
     };
   }
 
@@ -220,9 +233,18 @@ function parseArgs(argv: string[]): ParsedArgs {
         break;
       case '--output':
         output = args[++i];
+        if (output === 'prompts') {
+          outputPrompts = 'prompts';
+        }
         break;
       case '--heal':
         healPrompt = true;
+        break;
+      case '--dry-run':
+        dryRun = true;
+        break;
+      case '--setup-ide':
+        setupIde = true;
         break;
       case '--license':
         license = args[++i];
@@ -239,6 +261,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     license, configKey, configValue, sla, locale, configPath, offline,
     include, exclude, aiLocalModel, aiLocalUrl, aiRemoteProvider,
     aiRemoteModel, aiRemoteKey, noScore, json, diff, base, head,
+    dryRun, setupIde, outputPrompts,
   };
 }
 
@@ -907,6 +930,224 @@ async function commandConfig(subcommand?: string, key?: string, value?: string):
   }
 }
 
+// ─── Heal Command ───────────────────────────────────────────────────
+
+async function commandHeal(parsed: ParsedArgs): Promise<boolean> {
+  const envDefaults = resolveEnvDefaults();
+  const scanPath = parsed.paths[0] ?? '.';
+  const projectRoot = resolve(scanPath);
+  const sla = (parsed.sla?.toUpperCase() ?? envDefaults.sla?.toUpperCase() ?? 'L1') as SLALevel;
+
+  console.error('');
+  console.error('  Open Code Review — AI Auto-Fix');
+  console.error(`  Path: ${projectRoot}`);
+  console.error(`  SLA: ${sla}`);
+  console.error('');
+
+  if (parsed.dryRun) {
+    console.error('  Mode: DRY RUN (no files will be modified)');
+  }
+
+  // Step 1: Run V4 scan (reusing V3 legacy for AggregateScore — needed by heal)
+  const expandedPaths: string[] = [];
+  if (parsed.paths.length === 0) {
+    expandedPaths.push('src/**/*.ts', 'src/**/*.js', 'src/**/*.tsx', 'src/**/*.jsx',
+      '**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx',
+      '**/*.py', '**/*.java', '**/*.go', '**/*.kt');
+  } else {
+    for (const p of parsed.paths) {
+      expandedPaths.push(`${p}/**/*.ts`, `${p}/**/*.js`, `${p}/**/*.tsx`, `${p}/**/*.jsx`,
+        `${p}/**/*.py`, `${p}/**/*.java`, `${p}/**/*.go`, `${p}/**/*.kt`);
+    }
+  }
+
+  const files = await resolveFiles(expandedPaths);
+  if (files.length === 0) {
+    console.error('  No files found to scan.');
+    return true;
+  }
+
+  console.error(`  Scanning ${files.length} file(s)...`);
+
+  const hallucinationDetector = new HallucinationDetector({ projectRoot });
+  const logicGapDetector = new LogicGapDetector();
+  const duplicationDetector = new DuplicationDetector();
+  const contextBreakDetector = new ContextBreakDetector();
+  const scoringEngine = new ScoringEngine(parsed.threshold);
+
+  const fileScores: FileScore[] = [];
+  for (const file of files) {
+    try {
+      const source = readFileSync(file, 'utf-8');
+      const relPath = relative(projectRoot, resolve(file));
+      const halResult = hallucinationDetector.analyze(file, source);
+      const logicResult = logicGapDetector.analyze(file, source);
+      const dupResult = duplicationDetector.analyze(file, source);
+      const ctxResult = contextBreakDetector.analyze(file, source);
+      const score = scoringEngine.scoreFile(relPath, halResult, logicResult, dupResult, ctxResult);
+      fileScores.push(score);
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  const aggregate = scoringEngine.aggregate(fileScores);
+  console.error(`  Scan complete: ${aggregate.overallScore}/100 (Grade: ${aggregate.grade})`);
+  console.error(`  Files with issues: ${aggregate.failedFiles}`);
+  console.error('');
+
+  // Step 2: Filter files needing healing
+  const threshold = 95;
+  const filesToHeal = aggregate.files.filter(f => f.totalScore < threshold);
+  if (filesToHeal.length === 0) {
+    console.error('  ✅ All files passed! No healing needed.');
+    if (parsed.setupIde) {
+      await generateIDERules(aggregate, projectRoot);
+    }
+    return true;
+  }
+
+  console.error(`  Healing ${filesToHeal.length} file(s)...`);
+
+  // Step 3: Run auto-fix engine
+  const engine = new AutoFixEngine();
+  const healReport = await engine.heal(aggregate, {
+    projectRoot,
+    threshold,
+    dryRun: parsed.dryRun,
+    provider: (parsed.aiRemoteProvider as 'ollama' | 'openai') || undefined,
+    ollamaUrl: parsed.aiLocalUrl || envDefaults.ollamaUrl,
+    ollamaModel: parsed.aiLocalModel || envDefaults.ollamaModel,
+    openaiKey: parsed.aiRemoteKey || envDefaults.apiKey,
+    openaiModel: parsed.aiRemoteModel || undefined,
+    strategy: parsed.aiRemoteProvider ? 'remote-first' : 'local-first',
+    setupIde: parsed.setupIde,
+    outputPrompts: parsed.outputPrompts,
+  });
+
+  // Step 4: Generate report
+  const reporter = new HealReporter();
+  const reportMarkdown = reporter.generateReport(healReport, { includeDiff: true });
+
+  if (parsed.output && parsed.output !== 'prompts') {
+    writeFileSync(parsed.output, reportMarkdown, 'utf-8');
+    console.error(`  Report written to: ${parsed.output}`);
+  } else {
+    console.log(reportMarkdown);
+  }
+
+  // Generate SARIF
+  const sarifDir = parsed.output ? resolve(parsed.output, '..') : projectRoot;
+  const sarifPath = resolve(sarifDir, 'ocr-heal-report.sarif.json');
+  try {
+    writeFileSync(sarifPath, reporter.generateSARIF(healReport, aggregate), 'utf-8');
+    console.error(`  SARIF report: ${sarifPath}`);
+  } catch {
+    // Ignore SARIF write errors
+  }
+
+  // Step 5: IDE rules
+  if (parsed.setupIde) {
+    await generateIDERules(aggregate, projectRoot, healReport);
+  }
+
+  // Summary
+  console.error('');
+  if (healReport.filesHealed > 0) {
+    console.error(`  ✅ Healed ${healReport.filesHealed} file(s), ${healReport.issuesFixed} issue(s) fixed`);
+  } else {
+    console.error(`  ⚠ No files were healed (check errors above)`);
+  }
+  if (healReport.errors.length > 0) {
+    console.error(`  ⚠ ${healReport.errors.length} error(s) encountered`);
+  }
+
+  return healReport.filesToHeal === 0;
+}
+
+/**
+ * Generate IDE rule files from scan report.
+ */
+async function generateIDERules(
+  aggregate: AggregateScore,
+  projectRoot: string,
+  healReport?: import('@opencodereview/core').HealReport,
+): Promise<void> {
+  console.error('');
+  console.error('  Generating IDE rule files...');
+
+  const generator = new IDERulesGenerator();
+  const writtenPaths = generator.writeAll({
+    projectRoot,
+    report: aggregate,
+    healReport: healReport as any,
+  });
+
+  for (const path of writtenPaths) {
+    console.error(`  ✓ ${path}`);
+  }
+}
+
+// ─── Setup Command (IDE rules only) ────────────────────────────────
+
+async function commandSetup(parsed: ParsedArgs): Promise<boolean> {
+  const scanPath = parsed.paths[0] ?? '.';
+  const projectRoot = resolve(scanPath);
+
+  console.error('');
+  console.error('  Open Code Review — IDE Setup');
+  console.error(`  Path: ${projectRoot}`);
+  console.error('');
+
+  // Run a quick scan to get the report
+  const expandedPaths: string[] = [
+    'src/**/*.ts', 'src/**/*.js', 'src/**/*.tsx', 'src/**/*.jsx',
+    '**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx',
+    '**/*.py', '**/*.java', '**/*.go', '**/*.kt',
+  ];
+
+  const files = await resolveFiles(expandedPaths);
+  if (files.length === 0) {
+    console.error('  No files found to scan.');
+    return true;
+  }
+
+  console.error(`  Scanning ${files.length} file(s)...`);
+
+  const hallucinationDetector = new HallucinationDetector({ projectRoot });
+  const logicGapDetector = new LogicGapDetector();
+  const duplicationDetector = new DuplicationDetector();
+  const contextBreakDetector = new ContextBreakDetector();
+  const scoringEngine = new ScoringEngine(parsed.threshold);
+
+  const fileScores: FileScore[] = [];
+  for (const file of files) {
+    try {
+      const source = readFileSync(file, 'utf-8');
+      const relPath = relative(projectRoot, resolve(file));
+      const halResult = hallucinationDetector.analyze(file, source);
+      const logicResult = logicGapDetector.analyze(file, source);
+      const dupResult = duplicationDetector.analyze(file, source);
+      const ctxResult = contextBreakDetector.analyze(file, source);
+      const score = scoringEngine.scoreFile(relPath, halResult, logicResult, dupResult, ctxResult);
+      fileScores.push(score);
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  const aggregate = scoringEngine.aggregate(fileScores);
+  console.error(`  Scan complete: ${aggregate.overallScore}/100 (Grade: ${aggregate.grade})`);
+  console.error('');
+
+  await generateIDERules(aggregate, projectRoot);
+
+  console.error('');
+  console.error('  ✅ IDE rule files generated!');
+  console.error('  AI coding assistants will now follow your project rules.');
+  return true;
+}
+
 // ─── Help ──────────────────────────────────────────────────────────
 
 function printHelp(): void {
@@ -918,11 +1159,24 @@ USAGE:
 
 COMMANDS:
   scan [path]           Scan a project for AI-generated code defects (V4, default)
+  heal [path]           Scan + auto-fix issues using AI
+  setup [path]          Generate IDE rule files (Cursor/Copilot/Augment)
   scan-v3 [paths...]    Legacy V3 scan
   init                  Create .ocrrc.yml configuration file
   login                 Set up license key (opens Portal)
   config [show|set]     View or update configuration
   help                  Show this help message
+
+HEAL OPTIONS:
+  --dry-run             Preview fixes without modifying files
+  --sla <level>         SLA level: L1 (fast), L2 (standard), L3 (deep) [default: L1]
+  --setup-ide           Generate IDE rule files after healing
+  --output <path>       Write report to file; use "prompts" to output prompt files only
+  --ai-remote-provider  Remote AI provider: openai, anthropic
+  --ai-remote-model <m> Remote AI model name
+  --ai-remote-key <key> Remote AI API key (or env: OCR_API_KEY)
+  --ai-local-model <m>  Ollama model name
+  --ai-local-url <url>  Ollama base URL [default: http://localhost:11434]
 
 V4 SCAN OPTIONS:
   --diff                Enable diff-only scanning (scan changed files only)
@@ -964,6 +1218,11 @@ EXAMPLES:
   open-code-review scan . --offline --no-score
   open-code-review scan . --diff                          # scan only changed files vs origin/main
   open-code-review scan . --diff --base develop --head HEAD
+  open-code-review heal .                                 # scan + auto-fix
+  open-code-review heal . --dry-run                       # preview fixes only
+  open-code-review heal . --sla L2 --setup-ide            # fix + generate IDE rules
+  open-code-review heal . --output prompts                # output prompt files for Cursor/Copilot
+  open-code-review setup .                                # generate IDE rules only
   open-code-review scan-v3 ./src --threshold 80
   open-code-review init
   open-code-review login
@@ -978,6 +1237,18 @@ async function main(): Promise<void> {
   switch (parsed.command) {
     case 'scan': {
       const passed = await commandV4Scan(parsed);
+      process.exit(passed ? 0 : 1);
+      break;
+    }
+
+    case 'heal': {
+      const passed = await commandHeal(parsed);
+      process.exit(passed ? 0 : 1);
+      break;
+    }
+
+    case 'setup': {
+      const passed = await commandSetup(parsed);
       process.exit(passed ? 0 : 1);
       break;
     }

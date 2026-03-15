@@ -183,7 +183,7 @@ export class GoLanguageDetector implements V4Detector {
 const JAVA_PATTERNS: Array<{
   id: string;
   pattern: RegExp;
-  severity: 'error' | 'warning';
+  severity: 'error' | 'warning' | 'info';
   confidence: number;
   message: string;
 }> = [
@@ -325,7 +325,7 @@ export class JavaLanguageDetector implements V4Detector {
 const KOTLIN_PATTERNS: Array<{
   id: string;
   pattern: RegExp;
-  severity: 'error' | 'warning';
+  severity: 'error' | 'warning' | 'info';
   confidence: number;
   message: string;
 }> = [
@@ -476,7 +476,7 @@ export class KotlinLanguageDetector implements V4Detector {
 const PYTHON_PATTERNS: Array<{
   id: string;
   pattern: RegExp;
-  severity: 'error' | 'warning';
+  severity: 'error' | 'warning' | 'info';
   confidence: number;
   message: string;
 }> = [

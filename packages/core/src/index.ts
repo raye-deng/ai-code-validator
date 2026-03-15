@@ -148,6 +148,18 @@ export { AIDetector } from './detectors/ai-detector.js';
 export { PromptBuilder } from './ai-healer/prompt-builder.js';
 export type { FixPrompt } from './ai-healer/prompt-builder.js';
 
+export { AutoFixEngine, simpleDiff } from './ai-healer/auto-fix-engine.js';
+export type {
+  FilePatch,
+  AutoFixResult,
+  HealOptions,
+  HealReport,
+} from './ai-healer/auto-fix-engine.js';
+
+export { IDERulesGenerator } from './ai-healer/ide-rules-generator.js';
+
+export { HealReporter } from './ai-healer/heal-reporter.js';
+
 // ─── Registry (V4) ───
 
 export {

@@ -1,7 +1,7 @@
 {
   "name": "@opencodereview/cli",
   "version": "2.0.3",
-  "description": "Detect AI-hallucinated packages, phantom dependencies, and stale APIs in your codebase. Open-source CI/CD quality gate with local Ollama support \u2014 zero API cost.",
+  "description": "Detect AI-hallucinated packages, phantom dependencies, and stale APIs in your codebase. Open-source CI/CD quality gate with local Ollama support — zero API cost.",
   "type": "module",
   "bin": {
     "opencodereview": "./dist/index.js",
@@ -53,11 +53,11 @@
     "url": "https://github.com/raye-deng/open-code-review/issues"
   },
   "dependencies": {
-    "glob": "^10.3.0",
-    "@opencodereview/core": "^2.0.0"
+    "@opencodereview/core": "workspace:^",
+    "glob": "^10.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
   }
 }
