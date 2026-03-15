@@ -1,20 +1,19 @@
 # Open Code Review
 
-> The first CI/CD quality gate built for AI-generated code.
-> Free. Self-hostable. Not another linter.
+> **The first open-source CI/CD quality gate built specifically for AI-generated code.**
+> Detects hallucinated imports, stale APIs, over-engineering, and security anti-patterns — in under 10 seconds.
+> Free. Self-hostable. 6 languages. 8 LLM providers.
 
 ![Open Code Review](.github/social-preview.png)
 
-[![npm version](https://img.shields.io/npm/v/@opencodereview/cli?style=flat-square)](https://www.npmjs.com/package/@opencodereview/cli)
+[![npm version](https://img.shields.io/npm/v/@opencodereview/cli?style=flat-square&label=v2.1.0)](https://www.npmjs.com/package/@opencodereview/cli)
 [![npm downloads](https://img.shields.io/npm/dw/@opencodereview/cli?style=flat-square)](https://www.npmjs.com/package/@opencodereview/cli)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
 [![CI](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml/badge.svg)](https://github.com/raye-deng/open-code-review/actions/workflows/ci.yml)
-[![GitHub Stars](https://img.shields.io/github/stars/raye-deng/open-code-review?style=flat-square)](https://github.com/raye-deng/open-code-review)
+[![GitHub Stars](https://img.shields.io/github/stars/raye-deng/open-code-review?style=social)](https://github.com/raye-deng/open-code-review)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-<!-- SEO keywords: code review, AI code quality, CI/CD, code analysis, hallucination detection, static analysis, AI-generated code, code security, quality gate, SARIF -->
-
-## Why?
+## What AI Linters Miss
 
 AI coding assistants (Copilot, Cursor, Claude) generate code with **defects that traditional tools miss entirely**:
 
@@ -26,11 +25,13 @@ AI coding assistants (Copilot, Cursor, Claude) generate code with **defects that
 | **Over-engineered patterns** | Unnecessary abstractions, dead code | ❌ Miss |
 | **Security anti-patterns** | Hardcoded example secrets, `eval()` | ⚠️ Partial |
 
-Open Code Review detects all of them — in **under 10 seconds**, for **free**, running **100% locally**.
+Open Code Review detects all of them — across **6 languages**, in **under 10 seconds**, for **free**.
 
 ## Demo
 
-> 📺 **[See it in action — full terminal recording coming soon]**
+![L2 HTML Report Screenshot](docs/images/l2-html-report-screenshot.png)
+
+📄 [View full interactive HTML report](docs/demo-reports/v4-l2/self-scan.html)
 
 ### Quick Preview
 
@@ -51,17 +52,95 @@ $ npx @opencodereview/cli scan src/ --sla L1
   Files Scanned: 110  |  Languages: typescript  |  Duration: 8.7s
 ```
 
-### L2 HTML Report Sample
+## Three-Stage Pipeline
 
-![L2 HTML Report Screenshot](docs/images/l2-html-report-screenshot.png)
+```
+L1 Fast (free, <10s)          L2 Standard (local AI)        L3 Deep (remote LLM)
+├── Structural detection       ├── + Embedding recall        ├── + Remote LLM analysis
+├── Hallucinated imports       ├── + Risk scoring             ├── + Deep code analysis
+├── Stale API detection        ├── + Local LLM (Ollama)       ├── + Cross-file coherence
+├── Security patterns          ├── + Cross-file coherence     └── + Confidence scoring
+├── Over-engineering           └── + Enhanced scoring
+└── Score: A+ → F
+```
 
-**Features of HTML Report:**
-- Interactive issue browser with severity filters
-- Detailed code snippets with context
-- Scoring breakdown by dimension
-- Export to JSON/SARIF
+### Feature Comparison
 
-📄 [View full HTML report](docs/demo-reports/v4-l2/self-scan.html)
+| | L1 Fast | L2 Standard | L3 Deep Scan |
+|---|---------|-------------|--------------|
+| **AI required** | ❌ None | 🏠 Local (Ollama) | ☁️ Remote LLM |
+| **Hallucinated imports** | ✅ | ✅ | ✅ |
+| **Stale API detection** | ✅ | ✅ | ✅ |
+| **Security patterns** | ✅ | ✅ | ✅ |
+| **Over-engineering** | ✅ | ✅ | ✅ |
+| **Embedding analysis** | — | ✅ | ✅ |
+| **Risk scoring** | — | ✅ | ✅ |
+| **Cross-file coherence** | — | ✅ | ✅ |
+| **Deep LLM analysis** | — | — | ✅ |
+| **Confidence scoring** | — | — | ✅ |
+| **AI Auto-Fix (`ocr heal`)** | — | — | ✅ |
+| **Cost** | Free | Free (local) | Provider-dependent |
+| **Speed** | <10s | ~30s | ~60s |
+
+## L3 Deep Scan — Remote LLM Analysis
+
+L3 sends suspicious code blocks to a remote LLM for **deep semantic analysis** — catching subtle logic bugs, security vulnerabilities, and design anti-patterns that pattern matching alone cannot detect.
+
+**8 LLM providers supported:**
+
+```bash
+# Free with GLM (Zhipu AI)
+ocr scan src/ --sla L3 --provider glm --model pony-alpha-2 --api-key YOUR_KEY
+
+# OpenAI
+ocr scan src/ --sla L3 --provider openai --model gpt-4o --api-key YOUR_KEY
+
+# DeepSeek (free tier available)
+ocr scan src/ --sla L3 --provider deepseek --model deepseek-chat --api-key YOUR_KEY
+
+# Any OpenAI-compatible service
+ocr scan src/ --sla L3 --provider openai-compatible --api-base https://your-server/v1 --model your-model
+```
+
+## AI Auto-Fix — `ocr heal`
+
+Let AI automatically fix the issues it finds. Review changes before applying.
+
+```bash
+# Preview fixes without changing files
+ocr heal src/ --dry-run --provider glm
+
+# Apply fixes + generate IDE rules
+ocr heal src/ --provider glm --model pony-alpha-2 --api-key YOUR_KEY --setup-ide
+
+# Only generate IDE rules (Cursor, Copilot, Augment)
+ocr setup src/
+```
+
+## Multi-Language Detection
+
+Language-specific detectors for **6 languages**, plus hallucinated package databases (npm, PyPI, Maven, Go modules):
+
+| Language | Specific Detectors |
+|----------|-------------------|
+| **TypeScript / JavaScript** | Hallucinated imports (npm), stale APIs, over-engineering |
+| **Python** | Bare `except`, `eval()`, mutable default args, hallucinated imports (PyPI) |
+| **Java** | `System.out.println` leaks, deprecated `Date/Calendar`, hallucinated imports (Maven) |
+| **Go** | Unhandled errors, deprecated `ioutil`, `panic` in library code |
+| **Kotlin** | `!!` abuse, `println` leaks, null-safety anti-patterns |
+
+## Provider Gallery
+
+| Provider | Free Tier | Protocol |
+|----------|-----------|----------|
+| **GLM / ZAI** | ✅ Yes | OpenAI-compatible |
+| **Ollama (local)** | ✅ Yes | Ollama |
+| **OpenAI** | Limited | OpenAI |
+| **DeepSeek** | Free tier | OpenAI-compatible |
+| **Together AI** | Free tier | OpenAI-compatible |
+| **Fireworks** | Free tier | OpenAI-compatible |
+| **Anthropic** | No | Anthropic |
+| **Custom endpoint** | — | OpenAI-compatible |
 
 ## How It Compares
 
@@ -71,33 +150,15 @@ $ npx @opencodereview/cli scan src/ --sla L1
 | **Open Source** | ✅ | ❌ | ❌ | ❌ |
 | **Self-hosted** | ✅ | ❌ | Enterprise | ❌ |
 | **AI Hallucination Detection** | ✅ | ❌ | ❌ | ❌ |
-| **Stale API Detection** | ✅ Specialized | General | ❌ | ❌ |
-| **Local AI (Ollama)** | ✅ | ❌ | ❌ | ❌ |
-| **Registry Verification** | ✅ npm/PyPI | ❌ | ❌ | ❌ |
+| **Stale API Detection** | ✅ | ❌ | ❌ | ❌ |
+| **Deep LLM Analysis (L3)** | ✅ | ❌ | ❌ | ❌ |
+| **AI Auto-Fix** | ✅ | ❌ | ❌ | ❌ |
+| **Multi-Language** | ✅ 6 langs | ❌ | JS/TS | JS/TS |
+| **Registry Verification** | ✅ npm/PyPI/Maven | ❌ | ❌ | ❌ |
 | **SARIF Output** | ✅ | ❌ | ❌ | ❌ |
 | **GitHub + GitLab** | ✅ Both | GitHub only | Both | GitHub only |
 | **Review Speed** | <10s (L1) | ~20 min | ~30s | ~30s |
 | **Data Privacy** | ✅ 100% local | ❌ Cloud | ❌ Cloud | ❌ Cloud |
-
-## Who Is This For?
-
-- **Teams using AI coding assistants** — Copilot, Cursor, Claude Code, Codex, or any LLM-based tool that generates production code
-- **Open-source maintainers** — Review AI-generated PRs for hallucinated imports, stale APIs, and security anti-patterns before merging
-- **DevOps / Platform engineers** — Add a quality gate to CI/CD pipelines without sending code to cloud services
-- **Security-conscious teams** — Run everything locally (Ollama), keep your code on your machines
-- **Solo developers** — Free, fast, and works with zero configuration (`npx @opencodereview/cli scan src/`)
-
-## Why Open Code Review?
-
-Traditional linters (ESLint, SonarQube, Pylint) check **code style** and **known patterns**. They were built for human-written code. AI-generated code has a completely different class of defects:
-
-- **Hallucinated packages** — AI invents import paths that don't exist on npm/PyPI/Maven
-- **Training data staleness** — AI uses APIs deprecated years ago because they were in its training cutoff
-- **Context window artifacts** — Logic contradictions when a conversation generates code across multiple files
-- **Over-engineering** — AI adds unnecessary abstractions, dead code, and excessive error handling
-- **Security anti-patterns** — Hardcoded example secrets, `eval()`, SQL injection patterns
-
-Open Code Review catches these **before they reach production**, in under 10 seconds, running 100% locally.
 
 ## Quick Start
 
@@ -105,37 +166,19 @@ Open Code Review catches these **before they reach production**, in under 10 sec
 # Install
 npm install -g @opencodereview/cli
 
-# Scan your project (L1 — fast, no AI needed)
-ocr scan src/ --sla L1
+# L1 — Fast scan, no AI needed (FREE)
+ocr scan src/
 
-# Scan with AI analysis (L2 — requires Ollama or OpenAI)
+# L2 — Local AI analysis (Ollama)
 ocr scan src/ --sla L2
-```
 
-## Two-Stage Pipeline (L1 + L2)
-
-```
-L1: Pattern Detection (fast, local, free)
-├── Hallucinated import detection (npm/PyPI registry check)
-├── Deprecated API detection (AST-based)
-├── Security anti-pattern matching
-├── Over-engineering heuristics
-├── Code duplication analysis
-└── Score: 0-100 with letter grade
-
-L2: AI Deep Analysis (Embedding + LLM)
-├── Embedding recall → risk scoring → Top-N suspicious blocks
-├── LLM analysis (Ollama local or OpenAI/Anthropic cloud)
-├── Cross-file context coherence
-├── Semantic duplication detection
-└── Enhanced scoring with AI confidence
+# L3 — Deep analysis with any LLM (GLM is free!)
+ocr scan src/ --sla L3 --provider glm --model pony-alpha-2 --api-key YOUR_KEY
 ```
 
 ## CI/CD Integration
 
-### Add to Your Repo in 30 Seconds
-
-Copy this snippet into your `.github/workflows/ci.yml`:
+### GitHub Actions (30 seconds)
 
 ```yaml
 name: Code Review
@@ -153,19 +196,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-That's it. Every PR will now be checked for AI-generated code quality issues.
-
-### GitHub Action
-
-```yaml
-- uses: raye-deng/open-code-review@v1
-  with:
-    sla: L1
-    threshold: 60
-    scan-mode: diff
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
 ### GitLab CI
 
 ```yaml
@@ -177,7 +207,7 @@ code-review:
       codequality: ocr-report.json
 ```
 
-### CLI
+### CLI Formats
 
 ```bash
 ocr scan src/ --sla L1 --format terminal    # Pretty output
@@ -186,7 +216,7 @@ ocr scan src/ --sla L1 --format sarif       # SARIF for GitHub
 ocr scan src/ --sla L1 --format html        # HTML report
 ```
 
-## L2 Configuration (Ollama)
+### L2 Configuration (Ollama)
 
 ```yaml
 # .ocrrc.yml
@@ -211,12 +241,19 @@ packages/
   github-action/     # GitHub Action wrapper
 ```
 
-## Supported Languages
+## Who Is This For?
 
-TypeScript, JavaScript, Python, Go, Java, Kotlin (more coming)
+- **Teams using AI coding assistants** — Copilot, Cursor, Claude Code, Codex, or any LLM-based tool that generates production code
+- **Open-source maintainers** — Review AI-generated PRs for hallucinated imports, stale APIs, and security anti-patterns before merging
+- **DevOps / Platform engineers** — Add a quality gate to CI/CD pipelines without sending code to cloud services
+- **Security-conscious teams** — Run everything locally (Ollama), keep your code on your machines
+- **Solo developers** — Free, fast, and works with zero configuration (`npx @opencodereview/cli scan src/`)
 
 ## License
 
-[BSL-1.1](LICENSE) — Free for personal and non-commercial use.
-Converts to Apache 2.0 on 2030-03-11.
+[BSL-1.1](LICENSE) — Free for personal and non-commercial use. Converts to Apache 2.0 on 2030-03-11.
 Commercial use requires a [Team or Enterprise license](https://codes.evallab.ai/pricing).
+
+---
+
+**⭐ Star this repo if you find it useful — it helps more than you think!**
