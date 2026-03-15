@@ -95,6 +95,7 @@ export class NpmRegistry implements PackageRegistry {
           name: packageName,
           source: 'registry',
           latencyMs,
+          error: 'not-found',
         };
         await this.cache.set(cacheKey, result, this.cacheTtl);
         return result;
@@ -120,13 +121,16 @@ export class NpmRegistry implements PackageRegistry {
       await this.cache.set(cacheKey, result, this.cacheTtl);
       return result;
 
-    } catch {
+    } catch (err) {
       // Network error or timeout → assume exists (conservative, avoid false positives)
+      const errorDetail = err instanceof Error ? err.message : String(err);
       return {
         exists: true,
         name: packageName,
         source: 'registry',
         latencyMs: Date.now() - start,
+        error: 'unreachable',
+        errorDetail,
       };
     }
   }

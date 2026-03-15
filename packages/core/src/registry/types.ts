@@ -40,6 +40,15 @@ export interface PackageVerifyResult {
   source: 'registry' | 'cache' | 'builtin';
   /** Time taken for the lookup in milliseconds */
   latencyMs: number;
+  /**
+   * If the lookup failed, indicates why.
+   * - 'not-found': package confirmed not to exist (404 from registry)
+   * - 'unreachable': registry was unreachable (network error, timeout, DNS failure)
+   * - undefined: no error (package exists, or result from cache/builtin)
+   */
+  error?: 'not-found' | 'unreachable';
+  /** Human-readable error detail (e.g., "ETIMEDOUT after 5000ms", "ENOTFOUND registry.npmjs.org") */
+  errorDetail?: string;
 }
 
 /**
