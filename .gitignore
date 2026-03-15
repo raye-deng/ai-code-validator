@@ -9,3 +9,10 @@ out/
 *.log
 .DS_Store
 .ocrrc.yml
+
+# Operations & promotion (tracked in GitLab: ocr-operations)
+docs/promotion/
+promotion/
+docs/ENTERPRISE-GTM-PLAN.md
+docs/AI-CODE-SAFETY-TOOLS.md
+scripts/config/platforms.json
