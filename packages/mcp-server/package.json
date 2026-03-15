@@ -1,6 +1,6 @@
 {
   "name": "@opencodereview/mcp-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP Server for Open Code Review - AI code quality gate for Claude Desktop, Cursor, Windsurf, VS Code Copilot",
   "type": "module",
   "main": "./dist/index.js",
