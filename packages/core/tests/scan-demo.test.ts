@@ -73,7 +73,7 @@ function findFiles(dir: string, extensions: string[]): string[] {
 
   function walk(d: string, depth: number) {
     if (result.length >= MAX_FILES || depth > 12) return;
-    
+
     let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(d, { withFileTypes: true });
@@ -132,7 +132,7 @@ interface ScanResult {
 async function scanRepo(repo: RepoConfig): Promise<ScanResult> {
   const start = Date.now();
   const repoName = path.basename(repo.dir);
-  
+
   console.log(`\n${'='.repeat(60)}`);
   console.log(`Scanning: ${repo.label}`);
   console.log(`${'='.repeat(60)}`);
@@ -229,7 +229,7 @@ function writeReports(result: ScanResult): void {
 
 function generateSummary(results: ScanResult[]): string {
   const now = new Date().toISOString().split('T')[0];
-  
+
   let md = `# Open Code Review — Demo Scan Results\n\n`;
   md += `> Generated: ${now}  \n`;
   md += `> Engine: Open Code Review v0.3.0  \n`;
@@ -304,7 +304,7 @@ function generateSummary(results: ScanResult[]): string {
       md += `_No issues detected._\n\n`;
       continue;
     }
-    
+
     // Sort by severity
     const sevOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
     const sorted = [...r.issues].sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
