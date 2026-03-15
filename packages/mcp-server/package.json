@@ -1,0 +1,55 @@
+{
+  "name": "@opencodereview/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Open Code Review - AI code quality gate for Claude Desktop, Cursor, Windsurf, VS Code Copilot",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "ocr-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ai-code-review",
+    "claude",
+    "cursor",
+    "windsurf",
+    "copilot",
+    "code-quality",
+    "code-scanner",
+    "quality-gate"
+  ],
+  "author": "Raye Deng <fengsen.deng@gmail.com>",
+  "license": "BUSL-1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raye-deng/open-code-review"
+  },
+  "homepage": "https://codes.evallab.ai",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@opencodereview/core": "^2.1.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
