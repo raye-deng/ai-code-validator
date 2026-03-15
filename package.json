@@ -21,5 +21,28 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@10.23.0"
+  "packageManager": "pnpm@10.23.0",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/raye-deng"
+  },
+  "keywords": [
+    "ai-code-review",
+    "ai-generated-code",
+    "ast-analysis",
+    "ci-cd",
+    "code-analysis",
+    "code-quality",
+    "code-safety",
+    "github-actions",
+    "gitlab-ci",
+    "go",
+    "java",
+    "javascript",
+    "kotlin",
+    "phantom-package",
+    "python",
+    "sarif",
+    "typescript"
+  ]
 }
