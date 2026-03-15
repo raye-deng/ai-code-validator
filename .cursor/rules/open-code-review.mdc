@@ -1,0 +1,50 @@
+---
+description: Open Code Review - AI code quality gate for detecting hallucinated packages, stale APIs, context breaks, security anti-patterns, and over-engineering in AI-generated code.
+globs: 
+alwaysApply: false
+---
+# Open Code Review Integration
+
+When reviewing or writing code, use Open Code Review to detect AI-specific code quality issues.
+
+## Quick Scan
+Run a fast structural scan (no AI required):
+```bash
+npx @opencodereview/cli scan ./src --sla L1
+```
+
+## Deep Scan (requires Ollama or API key)
+```bash
+npx @opencodereview/cli scan ./src --sla L2
+```
+
+## PR Review (scan only changed files)
+```bash
+npx @opencodereview/cli scan . --diff --base origin/main --head HEAD
+```
+
+## What OCR Detects (Traditional tools miss these)
+1. **Hallucinated imports** - AI references packages that don't exist (compiles but crashes at runtime)
+2. **Stale APIs** - AI uses deprecated/broken APIs from its training cutoff
+3. **Context breaks** - Multi-file logic contradictions (each file passes tests individually but fails together)
+4. **Security anti-patterns** - Deprecated crypto, insecure defaults (not simple eval/hardcoded secrets)
+5. **Over-engineering** - Unnecessary abstraction layers that hurt maintainability
+
+## CI/CD Integration
+- GitHub Action: `uses: raye-deng/open-code-review@v1`
+- GitLab Component: `include: - component: gitlab.com/raye-deng/open-code-review@main`
+
+## MCP Server (for AI agents)
+Configure in Cursor Settings → MCP:
+```json
+{
+  "mcpServers": {
+    "open-code-review": {
+      "command": "npx",
+      "args": ["-y", "@opencodereview/mcp-server"]
+    }
+  }
+}
+```
+
+Then use tools: `scan_directory`, `scan_diff`, `explain_issue`, `heal_code`
