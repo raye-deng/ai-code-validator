@@ -68,6 +68,8 @@ import type {
   DiffResult,
   AggregateScore,
 } from '@opencodereview/core';
+import { ALL_LLM_PROVIDERS } from '@opencodereview/core';
+import type { LLMProviderType } from '@opencodereview/core';
 
 // ─── Constants ─────────────────────────────────────────────────────
 
@@ -118,6 +120,11 @@ interface ParsedArgs {
   dryRun?: boolean;
   setupIde?: boolean;
   outputPrompts?: string;
+  // Short-form AI options (L3)
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+  apiBase?: string;
   // V3 options
   threshold: number;
   output?: string;
@@ -158,6 +165,10 @@ function parseArgs(argv: string[]): ParsedArgs {
   let dryRun = false;
   let setupIde = false;
   let outputPrompts: string | undefined;
+  let provider: string | undefined;
+  let apiKey: string | undefined;
+  let model: string | undefined;
+  let apiBase: string | undefined;
 
   // Handle config subcommand
   if (command === 'config') {
@@ -171,7 +182,7 @@ function parseArgs(argv: string[]): ParsedArgs {
       configKey, configValue, sla, locale, format, configPath, offline,
       include, exclude, aiLocalModel, aiLocalUrl, aiRemoteProvider,
       aiRemoteModel, aiRemoteKey, noScore, json, diff, base, head,
-      dryRun, setupIde, outputPrompts,
+      dryRun, setupIde, outputPrompts, provider, apiKey, model, apiBase,
     };
   }
 
@@ -209,6 +220,18 @@ function parseArgs(argv: string[]): ParsedArgs {
         break;
       case '--ai-remote-key':
         aiRemoteKey = args[++i];
+        break;
+      case '--provider':
+        provider = args[++i];
+        break;
+      case '--api-key':
+        apiKey = args[++i];
+        break;
+      case '--model':
+        model = args[++i];
+        break;
+      case '--api-base':
+        apiBase = args[++i];
         break;
       case '--no-score':
         noScore = true;
@@ -261,7 +284,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     license, configKey, configValue, sla, locale, configPath, offline,
     include, exclude, aiLocalModel, aiLocalUrl, aiRemoteProvider,
     aiRemoteModel, aiRemoteKey, noScore, json, diff, base, head,
-    dryRun, setupIde, outputPrompts,
+    dryRun, setupIde, outputPrompts, provider, apiKey, model, apiBase,
   };
 }
 
@@ -344,6 +367,37 @@ async function commandV4Scan(parsed: ParsedArgs): Promise<boolean> {
   // Apply offline mode
   if (parsed.offline) {
     v4Config.registry = undefined;
+  }
+
+  // Wire up AI remote config from CLI args (short-form: --provider/--api-key/--model/--api-base)
+  const remoteProvider = parsed.provider ?? parsed.aiRemoteProvider;
+  const remoteKey = parsed.apiKey ?? parsed.aiRemoteKey ?? envDefaults.apiKey;
+  const remoteModel = parsed.model ?? parsed.aiRemoteModel;
+  const remoteBaseUrl = parsed.apiBase;
+
+  if (remoteProvider && remoteKey) {
+    const validProvider = ALL_LLM_PROVIDERS.includes(remoteProvider as any)
+      ? remoteProvider as LLMProviderType
+      : undefined;
+    if (validProvider) {
+      v4Config.ai = v4Config.ai ?? {};
+      v4Config.ai.remote = {
+        provider: validProvider,
+        model: remoteModel ?? 'gpt-4o-mini',
+        apiKey: remoteKey,
+        baseUrl: remoteBaseUrl,
+      };
+    }
+  }
+
+  // Wire up local LLM config from CLI args
+  if (parsed.aiLocalModel || parsed.aiLocalUrl) {
+    v4Config.ai = v4Config.ai ?? {};
+    v4Config.ai.llm = {
+      provider: 'ollama',
+      model: parsed.aiLocalModel ?? 'deepseek-coder-v2:16b',
+      endpoint: parsed.aiLocalUrl ?? 'http://localhost:11434',
+    };
   }
 
   // Create i18n provider
@@ -1172,7 +1226,8 @@ HEAL OPTIONS:
   --sla <level>         SLA level: L1 (fast), L2 (standard), L3 (deep) [default: L1]
   --setup-ide           Generate IDE rule files after healing
   --output <path>       Write report to file; use "prompts" to output prompt files only
-  --ai-remote-provider  Remote AI provider: openai, anthropic
+  --provider <p>        Remote AI provider: openai, anthropic, glm
+  --ai-remote-provider  Remote AI provider (alias for --provider)
   --ai-remote-model <m> Remote AI model name
   --ai-remote-key <key> Remote AI API key (or env: OCR_API_KEY)
   --ai-local-model <m>  Ollama model name
@@ -1191,9 +1246,13 @@ V4 SCAN OPTIONS:
   --exclude <patterns>  File patterns to exclude (comma-separated)
   --ai-local-model <m>  Ollama model name for L2 scans
   --ai-local-url <url>  Ollama base URL [default: http://localhost:11434]
-  --ai-remote-provider  Remote AI provider: openai, anthropic
+  --ai-remote-provider  Remote AI provider: openai, anthropic, glm
   --ai-remote-model <m> Remote AI model name
   --ai-remote-key <key> Remote AI API key (or env: OCR_API_KEY)
+  --provider <p>        Remote AI provider shorthand: openai, anthropic, glm
+  --api-key <key>       Remote AI API key shorthand
+  --model <m>           Remote AI model name shorthand
+  --api-base <url>      Remote AI API base URL (for GLM, etc.)
   --no-score            Skip scoring
   --json                Output as JSON (shorthand for --format json)
   --output <path>       Write report to file instead of stdout
@@ -1218,6 +1277,7 @@ EXAMPLES:
   open-code-review scan . --offline --no-score
   open-code-review scan . --diff                          # scan only changed files vs origin/main
   open-code-review scan . --diff --base develop --head HEAD
+  open-code-review scan . --sla L3 --provider glm --model pony-alpha-2 --api-key YOUR_KEY --api-base https://open.bigmodel.cn/api/coding/paas/v4
   open-code-review heal .                                 # scan + auto-fix
   open-code-review heal . --dry-run                       # preview fixes only
   open-code-review heal . --sla L2 --setup-ide            # fix + generate IDE rules

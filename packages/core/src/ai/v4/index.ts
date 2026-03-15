@@ -50,6 +50,13 @@ export type {
   AIConfig,
   ScanStageResult,
   AIPipelineResult,
+  LLMProviderType,
+  RemoteLLMConfig,
+} from './types.js';
+
+export {
+  LLM_PROVIDER_PRESETS,
+  ALL_LLM_PROVIDERS,
 } from './types.js';
 
 // ─── Embedding Providers ───
@@ -66,6 +73,12 @@ export {
 // ─── LLM Providers ───
 
 export { OllamaLLMProvider, OpenAILLMProvider, AnthropicLLMProvider } from './llm/index.js';
+export {
+  createRemoteLLMProvider,
+  createLocalLLMProvider,
+  resolveProviderPreset,
+  isValidProvider,
+} from './llm/provider-factory.js';
 
 // Backward compatibility aliases
 export { OllamaLLMProvider as OllamaProvider } from './llm/index.js';

@@ -7,3 +7,9 @@
 export { OllamaLLMProvider } from './ollama.js';
 export { OpenAILLMProvider } from './openai.js';
 export { AnthropicLLMProvider } from './anthropic.js';
+export {
+  createRemoteLLMProvider,
+  createLocalLLMProvider,
+  resolveProviderPreset,
+  isValidProvider,
+} from './provider-factory.js';

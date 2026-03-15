@@ -22,7 +22,7 @@ import type { RegistryOptions } from '../registry/types.js';
 import { createV4Detectors } from '../detectors/v4/index.js';
 import type { V4Detector, DetectorResult, DetectorContext } from '../detectors/v4/types.js';
 import { DefaultI18nProvider, type Locale, type I18nProvider } from '../i18n/index.js';
-import type { AIConfig } from '../ai/v4/types.js';
+import type { AIConfig, LLMProviderType } from '../ai/v4/types.js';
 import { AIScanPipeline } from '../ai/v4/pipeline.js';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -70,9 +70,10 @@ export interface V4ScanConfig {
       endpoint?: string;
     };
     remote?: {
-      provider?: 'openai' | 'anthropic';
+      provider?: LLMProviderType;
       model?: string;
       apiKey?: string;
+      baseUrl?: string;
     };
   };
 }
@@ -407,6 +408,7 @@ export class V4Scanner {
         provider: ai.remote.provider,
         model: ai.remote.model ?? 'gpt-4o-mini',
         apiKey: ai.remote.apiKey,
+        baseUrl: ai.remote.baseUrl,
       };
     }
 

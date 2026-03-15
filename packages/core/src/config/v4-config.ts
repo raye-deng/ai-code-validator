@@ -14,6 +14,7 @@ import { parse as parseYaml } from 'yaml';
 import type { V4ScanConfig, SLALevel } from '../scanner/v4-scanner.js';
 import type { Locale } from '../i18n/types.js';
 import type { RegistryOptions } from '../registry/types.js';
+import type { LLMProviderType } from '../ai/v4/types.js';
 
 // ─── V4 Config Types ────────────────────────────────────────────────
 
@@ -56,9 +57,10 @@ export interface V4Config {
       timeoutMs?: number;
     };
     remote?: {
-      provider?: 'openai' | 'anthropic';
+      provider?: LLMProviderType;
       model?: string;
       apiKey?: string;
+      baseUrl?: string;
     };
   };
 }

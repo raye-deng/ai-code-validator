@@ -78,6 +78,93 @@ export interface LLMResponse {
   latencyMs: number;
 }
 
+// ─── LLM Provider Adapter ──────────────────────────────────────────
+
+/**
+ * Supported remote LLM providers.
+ *
+ * - `openai`             — OpenAI official API
+ * - `openai-compatible`  — Any OpenAI-compatible API (DeepSeek, Together AI, Fireworks, Azure, etc.)
+ * - `glm`                — GLM (Zhipu AI) — preset, resolves to openai-compatible
+ * - `zai`                — ZAI (GLM international brand) — preset, resolves to openai-compatible
+ * - `deepseek`           — DeepSeek — preset, resolves to openai-compatible
+ * - `together`           — Together AI — preset, resolves to openai-compatible
+ * - `fireworks`          — Fireworks AI — preset, resolves to openai-compatible
+ * - `anthropic`          — Anthropic Messages API
+ *
+ * Provider presets auto-fill `baseUrl`. Use `openai-compatible` with explicit `--api-base`
+ * for any other OpenAI-compatible service.
+ */
+export type LLMProviderType =
+  | 'openai'
+  | 'openai-compatible'
+  | 'glm'
+  | 'zai'
+  | 'deepseek'
+  | 'together'
+  | 'fireworks'
+  | 'anthropic';
+
+/**
+ * Remote LLM provider configuration.
+ * Used by the factory to create the appropriate adapter.
+ */
+export interface RemoteLLMConfig {
+  /** Provider name or preset */
+  provider: LLMProviderType;
+  /** Model name (e.g. 'gpt-4o-mini', 'pony-alpha-2') */
+  model: string;
+  /** API key (required for remote providers) */
+  apiKey: string;
+  /** Base URL override (auto-filled from presets if omitted) */
+  baseUrl?: string;
+}
+
+/**
+ * Provider preset configurations.
+ * Each preset maps to a protocol type and default base URL.
+ */
+export const LLM_PROVIDER_PRESETS: Record<string, {
+  protocol: 'openai' | 'openai-compatible' | 'anthropic';
+  baseUrl: string;
+}> = {
+  openai: {
+    protocol: 'openai',
+    baseUrl: 'https://api.openai.com/v1',
+  },
+  'openai-compatible': {
+    protocol: 'openai-compatible',
+    baseUrl: '', // must be provided by user
+  },
+  glm: {
+    protocol: 'openai-compatible',
+    baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
+  },
+  zai: {
+    protocol: 'openai-compatible',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+  },
+  deepseek: {
+    protocol: 'openai-compatible',
+    baseUrl: 'https://api.deepseek.com/v1',
+  },
+  together: {
+    protocol: 'openai-compatible',
+    baseUrl: 'https://api.together.xyz/v1',
+  },
+  fireworks: {
+    protocol: 'openai-compatible',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+  },
+  anthropic: {
+    protocol: 'anthropic',
+    baseUrl: 'https://api.anthropic.com/v1',
+  },
+};
+
+/** All valid provider/preset names for CLI validation */
+export const ALL_LLM_PROVIDERS = Object.keys(LLM_PROVIDER_PRESETS) as LLMProviderType[];
+
 // ─── AI Config ─────────────────────────────────────────────────────
 
 /**
@@ -102,13 +189,8 @@ export interface AIConfig {
     baseUrl?: string; // default: http://localhost:11434
   };
 
-  /** Remote LLM configuration (OpenAI / Anthropic) */
-  remote?: {
-    provider: 'openai' | 'anthropic';
-    model: string;
-    apiKey: string;
-    baseUrl?: string;
-  };
+  /** Remote LLM configuration (OpenAI / Anthropic / GLM / any OpenAI-compatible) */
+  remote?: RemoteLLMConfig;
 
   /** Maximum code blocks to send to LLM stage (default: 20) */
   maxLLMBlocks?: number;

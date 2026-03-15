@@ -25,6 +25,7 @@ import { OllamaEmbeddingProvider } from './embedding/index.js';
 import { OllamaLLMProvider } from './llm/index.js';
 import { OpenAILLMProvider } from './llm/index.js';
 import { AnthropicLLMProvider } from './llm/index.js';
+import { createRemoteLLMProvider } from './llm/provider-factory.js';
 import {
   DEFECT_PATTERNS,
   getPatternText,
@@ -394,19 +395,7 @@ export class AIScanPipeline {
 
     // Fallback to remote (L3 only)
     if (this.config.remote) {
-      if (this.config.remote.provider === 'anthropic') {
-        return new AnthropicLLMProvider(
-          this.config.remote.apiKey,
-          this.config.remote.model,
-        );
-      }
-      if (this.config.remote.provider === 'openai') {
-        return new OpenAILLMProvider(
-          this.config.remote.apiKey,
-          this.config.remote.model,
-          this.config.remote.baseUrl,
-        );
-      }
+      return createRemoteLLMProvider(this.config.remote);
     }
 
     return null;

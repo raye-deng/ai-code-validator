@@ -343,4 +343,14 @@ export type {
   ScanStageResult,
   AIPipelineResult,
   DefectPattern,
+  LLMProviderType,
+  RemoteLLMConfig,
+} from './ai/v4/index.js';
+
+export {
+  LLM_PROVIDER_PRESETS,
+  ALL_LLM_PROVIDERS,
+  createRemoteLLMProvider,
+  createLocalLLMProvider,
+  isValidProvider,
 } from './ai/v4/index.js';
