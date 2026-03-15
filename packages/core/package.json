@@ -102,6 +102,10 @@
   ],
   "author": "Raye Deng <fengsen.deng@gmail.com>",
   "license": "MIT",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/raye-deng"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/raye-deng/open-code-review"
