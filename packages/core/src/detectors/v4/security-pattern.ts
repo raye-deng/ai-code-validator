@@ -206,6 +206,87 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
     languages: [],
   },
 
+  // ── AI-Specific Security Anti-Patterns ────────────────────────
+  // These patterns are commonly produced by AI from training data
+  // and represent AI-specific security risks that traditional tools miss.
+
+  {
+    id: 'example-openai-key',
+    pattern: /sk-(?:proj-|svcacct-)[a-zA-Z0-9]{4,24}(-[a-zA-Z0-9]{4,24}){1,3}/,
+    severity: 'error',
+    confidence: 0.8,
+    message: 'Possible OpenAI API key from documentation/example code. Verify this is not a real key and use environment variables.',
+    languages: [],
+    excludeContextPatterns: [/process\.env/i, /import\.meta\.env/i, /\bgetenv\b/i],
+  },
+  {
+    id: 'placeholder-secret-value',
+    pattern: /(?:password|secret|api[_-]?key|token)\s*[:=]\s*['"][^'"]*(?:example|sample|demo|placeholder|changeme|your[_-]?(?:api[_-]?)?(?:key[_-]?)?here|xxx+|FIXME|TODO)[^'"]*['"]/i,
+    severity: 'warning',
+    confidence: 0.7,
+    message: 'Placeholder secret value detected. AI often copies example values from documentation. Replace with proper secret management.',
+    languages: [],
+  },
+  {
+    id: 'dynamic-cors-origin-reflection',
+    pattern: /Access-Control-Allow-Origin.*?(?:req|request|headers\.origin|\$\{.*?origin)/i,
+    severity: 'error',
+    confidence: 0.85,
+    message: 'Dynamic CORS origin reflection detected. Echoing the request Origin header back in Access-Control-Allow-Origin enables cross-site attacks. Use an explicit allowlist instead.',
+    languages: [],
+  },
+  {
+    id: 'dynamic-cors-origin-variable',
+    pattern: /(?:allowOrigin|cors\.origin|Access-Control-Allow-Origin).*?origin/i,
+    severity: 'warning',
+    confidence: 0.6,
+    message: 'CORS configuration may dynamically reflect the request origin. This can enable cross-site attacks if not validated. Use an explicit allowlist.',
+    languages: [],
+    excludeContextPatterns: [/\[?['"][\w\-\.\/:*]+['"]\]?/, /allowedOrigins\s*[:=]\s*\[/],
+  },
+  {
+    id: 'sensitive-data-logging',
+    pattern: /console\.\w+\s*\(\s*(?:.*?(?:password|passwd|pwd|secret|token|api[_-]?key|authorization|cookie|session|credential))/i,
+    severity: 'warning',
+    confidence: 0.65,
+    message: 'Possible sensitive data in console.log statement. AI commonly leaves debug logging that exposes secrets in production.',
+    languages: ['typescript', 'javascript'],
+  },
+  {
+    id: 'python-sensitive-logging',
+    pattern: /(?:print|logging|logger)(?:\.\w+)?\s*\(\s*(?:.*?(?:password|secret|token|api[_-]?key|authorization|credential))/i,
+    severity: 'warning',
+    confidence: 0.6,
+    message: 'Possible sensitive data in log output. AI commonly leaves debug logging that exposes secrets in production.',
+    languages: ['python'],
+  },
+  {
+    id: 'jwt-empty-secret',
+    pattern: /jwt\.(?:verify|sign)\s*\([^,]+,\s*['"][^'"]{0,2}['"]/,
+    severity: 'error',
+    confidence: 0.85,
+    message: 'JWT verification/signing with empty or near-empty secret. This provides no security. Use a strong, properly stored secret key.',
+    languages: [],
+  },
+  {
+    id: 'jwt-hardcoded-secret',
+    pattern: /jwt\.(?:verify|sign)\s*\([^,]+,\s*['"][A-Za-z0-9]{8,}['"]/,
+    severity: 'error',
+    confidence: 0.8,
+    message: 'JWT verification/signing with hardcoded secret. Use environment variables or a secrets manager for the signing key.',
+    languages: [],
+    excludeContextPatterns: [/process\.env/i, /import\.meta\.env/i, /\bgetenv\b/i, /\bos\.getenv\b/i],
+  },
+  {
+    id: 'unsafe-json-parse-user-input',
+    pattern: /JSON\.(?:parse|stringify)\s*\(\s*(?:req|request|body|params|query|input|user|event)\b/i,
+    severity: 'warning',
+    confidence: 0.5,
+    message: 'JSON.parse() on user input without schema validation. AI often omits input validation. Consider using a schema validator (zod, joi, yup) to validate the parsed object.',
+    languages: ['typescript', 'javascript'],
+    excludeContextPatterns: [/zod|joi|yup|ajv|schema|validate|parseBody|safeParse/i],
+  },
+
   // ── Go-specific Security Patterns ──────────────────────────────
 
   {

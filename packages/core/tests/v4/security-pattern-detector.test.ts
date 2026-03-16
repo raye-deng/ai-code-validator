@@ -357,4 +357,95 @@ function generateCacheKey(data: string): string {
     expect(pwResult).toBeDefined();
     expect(pwResult!.severity).toBe('error');
   });
+
+  // ── AI-Specific Security Anti-Patterns ────────────────────────
+
+  it('should detect OpenAI example key pattern', async () => {
+    const unit = makeUnit('const apiKey = "sk-proj-abc123XYZdef456GHI-jkl789";');
+    const results = await detector.detect([unit], createContext());
+    const keyResult = results.find(r => r.metadata?.patternId === 'example-openai-key');
+    expect(keyResult).toBeDefined();
+    expect(keyResult!.severity).toBe('error');
+  });
+
+  it('should not flag OpenAI key loaded from env', async () => {
+    const unit = makeUnit('const apiKey = process.env.OPENAI_API_KEY;');
+    const results = await detector.detect([unit], createContext());
+    const keyResult = results.find(r => r.metadata?.patternId === 'example-openai-key');
+    expect(keyResult).toBeUndefined();
+  });
+
+  it('should detect placeholder secret values', async () => {
+    const unit = makeUnit('const password = "changeme";');
+    const results = await detector.detect([unit], createContext());
+    const result = results.find(r => r.metadata?.patternId === 'placeholder-secret-value');
+    expect(result).toBeDefined();
+    expect(result!.severity).toBe('warning');
+  });
+
+  it('should detect "your-api-key-here" placeholder', async () => {
+    const unit = makeUnit('const apiKey = "your-api-key-here";');
+    const results = await detector.detect([unit], createContext());
+    const result = results.find(r => r.metadata?.patternId === 'placeholder-secret-value');
+    expect(result).toBeDefined();
+  });
+
+  it('should detect dynamic CORS origin reflection', async () => {
+    const unit = makeUnit(`res.setHeader('Access-Control-Allow-Origin', req.headers.origin);`);
+    const results = await detector.detect([unit], createContext());
+    const corsResult = results.find(r => r.metadata?.patternId === 'dynamic-cors-origin-reflection');
+    expect(corsResult).toBeDefined();
+    expect(corsResult!.severity).toBe('error');
+  });
+
+  it('should detect sensitive data logging in JS', async () => {
+    const unit = makeUnit('console.log("User token:", user.token);');
+    const results = await detector.detect([unit], createContext());
+    const logResult = results.find(r => r.metadata?.patternId === 'sensitive-data-logging');
+    expect(logResult).toBeDefined();
+    expect(logResult!.severity).toBe('warning');
+  });
+
+  it('should detect sensitive data logging in Python', async () => {
+    const unit = makeUnit('print(f"Token: {user.token}")', 'python', 'app.py');
+    const results = await detector.detect([unit], createContext());
+    const logResult = results.find(r => r.metadata?.patternId === 'python-sensitive-logging');
+    expect(logResult).toBeDefined();
+  });
+
+  it('should detect JWT verification with empty secret', async () => {
+    const unit = makeUnit('jwt.verify(token, "");');
+    const results = await detector.detect([unit], createContext());
+    const jwtResult = results.find(r => r.metadata?.patternId === 'jwt-empty-secret');
+    expect(jwtResult).toBeDefined();
+    expect(jwtResult!.severity).toBe('error');
+  });
+
+  it('should detect JWT verification with hardcoded secret', async () => {
+    const unit = makeUnit('jwt.verify(token, "superSecretKey123");');
+    const results = await detector.detect([unit], createContext());
+    const jwtResult = results.find(r => r.metadata?.patternId === 'jwt-hardcoded-secret');
+    expect(jwtResult).toBeDefined();
+  });
+
+  it('should not flag JWT secret loaded from env', async () => {
+    const unit = makeUnit('jwt.verify(token, process.env.JWT_SECRET);');
+    const results = await detector.detect([unit], createContext());
+    const jwtResult = results.find(r => r.metadata?.patternId === 'jwt-hardcoded-secret');
+    expect(jwtResult).toBeUndefined();
+  });
+
+  it('should detect unsafe JSON.parse on user input', async () => {
+    const unit = makeUnit('const data = JSON.parse(req.body);');
+    const results = await detector.detect([unit], createContext());
+    const parseResult = results.find(r => r.metadata?.patternId === 'unsafe-json-parse-user-input');
+    expect(parseResult).toBeDefined();
+  });
+
+  it('should not flag JSON.parse with zod validation', async () => {
+    const unit = makeUnit('const data = zod.parse(JSON.parse(req.body));');
+    const results = await detector.detect([unit], createContext());
+    const parseResult = results.find(r => r.metadata?.patternId === 'unsafe-json-parse-user-input');
+    expect(parseResult).toBeUndefined();
+  });
 });
