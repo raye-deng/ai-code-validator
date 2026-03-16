@@ -130,6 +130,7 @@ Language-specific detectors for **6 languages**, plus hallucinated package datab
 | **AI Auto-Fix** | ✅ | ❌ | ❌ | ❌ |
 | **Multi-Language** | ✅ 6 langs | ❌ | JS/TS | JS/TS |
 | **Registry Verification** | ✅ npm/PyPI/Maven | ❌ | ❌ | ❌ |
+| **Unicode Security Detection** | ✅ | ❌ | ❌ | ❌ |
 | **SARIF Output** | ✅ | ❌ | ❌ | ❌ |
 | **GitHub + GitLab** | ✅ Both | GitHub only | Both | GitHub only |
 | **Data Privacy** | ✅ 100% local | ❌ Cloud | ❌ Cloud | ❌ Cloud |
