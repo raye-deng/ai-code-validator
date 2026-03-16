@@ -45321,6 +45321,326 @@ class AIDetector {
     }
 }
 //# sourceMappingURL=ai-detector.js.map
+;// CONCATENATED MODULE: ../core/dist/ai/v4/types.js
+/**
+ * Open Code Review V4 — AI Pipeline Types
+ *
+ * Type definitions for the two-stage AI scan pipeline:
+ * - Stage 1 (Embedding): Fast similarity-based defect detection
+ * - Stage 2 (LLM): Deep analysis of suspicious code blocks
+ *
+ * SLA levels control which stages run:
+ * - L1 Fast: Structural detectors only (no AI)
+ * - L2 Standard: + Embedding recall + Local LLM (Ollama)
+ * - L3 Deep: + Remote LLM (OpenAI/Claude)
+ *
+ * @since 0.4.0
+ */
+/**
+ * Provider preset configurations.
+ * Each preset maps to a protocol type and default base URL.
+ */
+const types_LLM_PROVIDER_PRESETS = {
+    openai: {
+        protocol: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+    },
+    'openai-compatible': {
+        protocol: 'openai-compatible',
+        baseUrl: '', // must be provided by user
+    },
+    glm: {
+        protocol: 'openai-compatible',
+        baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
+    },
+    zai: {
+        protocol: 'openai-compatible',
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    },
+    deepseek: {
+        protocol: 'openai-compatible',
+        baseUrl: 'https://api.deepseek.com/v1',
+    },
+    together: {
+        protocol: 'openai-compatible',
+        baseUrl: 'https://api.together.xyz/v1',
+    },
+    fireworks: {
+        protocol: 'openai-compatible',
+        baseUrl: 'https://api.fireworks.ai/inference/v1',
+    },
+    anthropic: {
+        protocol: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+    },
+};
+/** All valid provider/preset names for CLI validation */
+const types_ALL_LLM_PROVIDERS = Object.keys(types_LLM_PROVIDER_PRESETS);
+//# sourceMappingURL=types.js.map
+;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/openai.js
+/**
+ * OpenAI LLM Provider
+ *
+ * Provides LLM inference via OpenAI Chat Completions API.
+ * Used for L3 SLA level where remote high-quality models are needed.
+ *
+ * @since 0.4.0
+ */
+/**
+ * OpenAI provider for remote LLM inference.
+ *
+ * Requires an API key. Supports all OpenAI chat models.
+ *
+ * @example
+ * ```ts
+ * const provider = new OpenAIProvider(process.env.OPENAI_API_KEY, 'gpt-4o-mini');
+ * if (await provider.isAvailable()) {
+ *   const response = await provider.complete('Review this code:', { maxTokens: 1000 });
+ * }
+ * ```
+ */
+class OpenAILLMProvider {
+    apiKey;
+    model;
+    baseUrl;
+    name = 'openai';
+    constructor(apiKey, model = 'gpt-4o-mini', baseUrl = 'https://api.openai.com/v1') {
+        this.apiKey = apiKey;
+        this.model = model;
+        this.baseUrl = baseUrl;
+    }
+    /**
+     * Send a completion request to OpenAI Chat Completions API.
+     */
+    async complete(prompt, options) {
+        const url = `${this.baseUrl}/chat/completions`;
+        const startTime = Date.now();
+        const messages = [];
+        if (options?.system) {
+            messages.push({ role: 'system', content: options.system });
+        }
+        messages.push({ role: 'user', content: prompt });
+        const body = {
+            model: this.model,
+            messages,
+        };
+        if (options?.maxTokens) {
+            body.max_tokens = options.maxTokens;
+        }
+        if (options?.temperature !== undefined) {
+            body.temperature = options.temperature;
+        }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60_000),
+        });
+        if (!response.ok) {
+            const errorBody = await response.text().catch(() => 'unknown error');
+            throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
+        }
+        const data = (await response.json());
+        const latencyMs = Date.now() - startTime;
+        const content = data.choices[0]?.message?.content ?? '';
+        return {
+            content,
+            usage: data.usage
+                ? {
+                    prompt: data.usage.prompt_tokens,
+                    completion: data.usage.completion_tokens,
+                    total: data.usage.total_tokens,
+                }
+                : undefined,
+            latencyMs,
+        };
+    }
+    /**
+     * Check if the provider is available (has API key configured).
+     */
+    async isAvailable() {
+        return !!this.apiKey && this.apiKey.length > 0;
+    }
+}
+//# sourceMappingURL=openai.js.map
+;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/anthropic.js
+/**
+ * Anthropic LLM Provider
+ *
+ * Provides LLM inference via Anthropic Messages API.
+ * Used for L3 SLA level as an alternative to OpenAI.
+ *
+ * @since 0.4.0
+ */
+/**
+ * Anthropic provider for remote LLM inference using Claude models.
+ *
+ * Requires an API key. Supports Claude 3.5 and newer models.
+ *
+ * @example
+ * ```ts
+ * const provider = new AnthropicProvider(process.env.ANTHROPIC_API_KEY, 'claude-3-5-haiku-20241022');
+ * if (await provider.isAvailable()) {
+ *   const response = await provider.complete('Review this code:', { maxTokens: 1000 });
+ * }
+ * ```
+ */
+class AnthropicLLMProvider {
+    apiKey;
+    model;
+    baseUrl;
+    name = 'anthropic';
+    constructor(apiKey, model = 'claude-3-5-haiku-20241022', baseUrl = 'https://api.anthropic.com/v1') {
+        this.apiKey = apiKey;
+        this.model = model;
+        this.baseUrl = baseUrl;
+    }
+    /**
+     * Send a completion request to Anthropic Messages API.
+     */
+    async complete(prompt, options) {
+        const url = `${this.baseUrl}/messages`;
+        const startTime = Date.now();
+        const body = {
+            model: this.model,
+            max_tokens: options?.maxTokens ?? 4096,
+            messages: [{ role: 'user', content: prompt }],
+        };
+        if (options?.system) {
+            body.system = options.system;
+        }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': this.apiKey,
+                'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60_000),
+        });
+        if (!response.ok) {
+            const errorBody = await response.text().catch(() => 'unknown error');
+            throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
+        }
+        const data = (await response.json());
+        const latencyMs = Date.now() - startTime;
+        // Extract text from content blocks
+        const content = data.content
+            .filter(block => block.type === 'text')
+            .map(block => block.text ?? '')
+            .join('');
+        return {
+            content,
+            usage: data.usage
+                ? {
+                    prompt: data.usage.input_tokens,
+                    completion: data.usage.output_tokens,
+                    total: data.usage.input_tokens + data.usage.output_tokens,
+                }
+                : undefined,
+            latencyMs,
+        };
+    }
+    /**
+     * Check if the provider is available (has API key configured).
+     */
+    async isAvailable() {
+        return !!this.apiKey && this.apiKey.length > 0;
+    }
+}
+//# sourceMappingURL=anthropic.js.map
+;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/provider-factory.js
+/**
+ * LLM Provider Factory
+ *
+ * Creates the appropriate LLM provider adapter based on configuration.
+ * Supports:
+ * - OpenAI official API
+ * - Any OpenAI-compatible API (GLM, DeepSeek, Together AI, Fireworks, Azure, etc.)
+ * - Anthropic Messages API
+ * - Local Ollama
+ *
+ * Provider presets auto-fill `baseUrl`. The factory resolves presets
+ * to protocol-specific adapters.
+ *
+ * @since 0.4.0
+ */
+
+
+
+
+/**
+ * Resolve a provider preset to its effective config.
+ */
+function resolveProviderPreset(config) {
+    const preset = types_LLM_PROVIDER_PRESETS[config.provider];
+    if (!preset) {
+        throw new Error(`Unknown LLM provider: "${config.provider}". ` +
+            `Valid providers: ${Object.keys(types_LLM_PROVIDER_PRESETS).join(', ')}`);
+    }
+    return {
+        adapter: preset.protocol,
+        baseUrl: config.baseUrl ?? preset.baseUrl,
+    };
+}
+/**
+ * Create a remote LLM provider from configuration.
+ *
+ * Automatically resolves provider presets (glm, deepseek, etc.)
+ * to the appropriate adapter.
+ *
+ * @example
+ * ```ts
+ * // GLM preset (auto-resolves to OpenAI-compatible)
+ * const provider = createRemoteLLMProvider({
+ *   provider: 'glm',
+ *   model: 'pony-alpha-2',
+ *   apiKey: 'your-key',
+ * });
+ *
+ * // Custom OpenAI-compatible service
+ * const provider = createRemoteLLMProvider({
+ *   provider: 'openai-compatible',
+ *   model: 'my-model',
+ *   apiKey: 'your-key',
+ *   baseUrl: 'https://my-llm-server.com/v1',
+ * });
+ * ```
+ */
+function provider_factory_createRemoteLLMProvider(config) {
+    const { adapter, baseUrl } = resolveProviderPreset(config);
+    if (!baseUrl) {
+        throw new Error(`No baseUrl for provider "${config.provider}". ` +
+            `Set --api-base or provide baseUrl in config.`);
+    }
+    switch (adapter) {
+        case 'openai':
+        case 'openai-compatible':
+            // Both use OpenAI Chat Completions protocol
+            return new OpenAILLMProvider(config.apiKey, config.model, baseUrl);
+        case 'anthropic':
+            return new AnthropicLLMProvider(config.apiKey, config.model, baseUrl);
+        default:
+            throw new Error(`Unhandled adapter type: "${adapter}"`);
+    }
+}
+/**
+ * Create a local Ollama LLM provider.
+ */
+function provider_factory_createLocalLLMProvider(model, baseUrl) {
+    return new OllamaLLMProvider(model, baseUrl ?? 'http://localhost:11434');
+}
+/**
+ * Validate if a provider name is a valid preset.
+ */
+function isValidProvider(name) {
+    return name in LLM_PROVIDER_PRESETS;
+}
+//# sourceMappingURL=provider-factory.js.map
 ;// CONCATENATED MODULE: ../core/dist/ai-healer/auto-fix-engine.js
 /**
  * AI Auto-Fix Engine
@@ -45328,6 +45648,8 @@ class AIDetector {
  * Executes AI-powered fixes on files that scored below the threshold.
  * Uses existing AI providers (Ollama/OpenAI) and PromptBuilder.
  */
+
+
 
 
 
@@ -45392,8 +45714,44 @@ ${source}
 \`\`\`
 
 Return ONLY the complete fixed file content. Do NOT include explanations, markdown fences, or any text outside the code block. Return the raw code only.`;
-    // Try providers based on strategy
     const strategy = options.strategy || 'local-first';
+    const useProvider = options.provider;
+    // If a specific V4 provider is configured, use the provider factory
+    if (useProvider && ALL_LLM_PROVIDERS.includes(useProvider)) {
+        try {
+            const isOllama = useProvider === 'ollama';
+            let llmProvider;
+            if (isOllama) {
+                llmProvider = createLocalLLMProvider(options.ollamaModel || 'qwen3-coder', options.ollamaUrl || 'http://localhost:11434');
+            }
+            else {
+                llmProvider = createRemoteLLMProvider({
+                    provider: useProvider,
+                    model: options.openaiModel || options.ollamaModel || 'gpt-4o-mini',
+                    apiKey: options.openaiKey || process.env.OCR_API_KEY || '',
+                    baseUrl: options.openaiEndpoint, // undefined = use preset default
+                });
+            }
+            const response = await llmProvider.complete(fullPrompt, {
+                temperature: 0.1,
+                maxTokens: 8192,
+            });
+            return {
+                code: response.content || '',
+                provider: useProvider,
+                model: options.openaiModel || options.ollamaModel || 'default',
+            };
+        }
+        catch (err) {
+            if (strategy === 'remote-only')
+                throw err;
+            // When a specific provider was requested, don't fall through to legacy providers
+            // — re-throw the error so the file-level handler can report it
+            if (useProvider)
+                throw err;
+        }
+    }
+    // Legacy fallback: Try providers based on strategy
     if (strategy === 'local-first' || strategy === 'local-only') {
         try {
             const result = await callOllama(fullPrompt, options);
@@ -46179,6 +46537,7 @@ class NpmRegistry {
                     name: packageName,
                     source: 'registry',
                     latencyMs,
+                    error: 'not-found',
                 };
                 await this.cache.set(cacheKey, result, this.cacheTtl);
                 return result;
@@ -46203,13 +46562,16 @@ class NpmRegistry {
             await this.cache.set(cacheKey, result, this.cacheTtl);
             return result;
         }
-        catch {
+        catch (err) {
             // Network error or timeout → assume exists (conservative, avoid false positives)
+            const errorDetail = err instanceof Error ? err.message : String(err);
             return {
                 exists: true,
                 name: packageName,
                 source: 'registry',
                 latencyMs: Date.now() - start,
+                error: 'unreachable',
+                errorDetail,
             };
         }
     }
@@ -51780,6 +52142,85 @@ const SECURITY_PATTERNS = [
         message: 'HTTP URL detected (not HTTPS). Consider using HTTPS for production endpoints.',
         languages: [],
     },
+    // ── AI-Specific Security Anti-Patterns ────────────────────────
+    // These patterns are commonly produced by AI from training data
+    // and represent AI-specific security risks that traditional tools miss.
+    {
+        id: 'example-openai-key',
+        pattern: /sk-(?:proj-|svcacct-)[a-zA-Z0-9]{4,24}(-[a-zA-Z0-9]{4,24}){1,3}/,
+        severity: 'error',
+        confidence: 0.8,
+        message: 'Possible OpenAI API key from documentation/example code. Verify this is not a real key and use environment variables.',
+        languages: [],
+        excludeContextPatterns: [/process\.env/i, /import\.meta\.env/i, /\bgetenv\b/i],
+    },
+    {
+        id: 'placeholder-secret-value',
+        pattern: /(?:password|secret|api[_-]?key|token)\s*[:=]\s*['"][^'"]*(?:example|sample|demo|placeholder|changeme|your[_-]?(?:api[_-]?)?(?:key[_-]?)?here|xxx+|FIXME|TODO)[^'"]*['"]/i,
+        severity: 'warning',
+        confidence: 0.7,
+        message: 'Placeholder secret value detected. AI often copies example values from documentation. Replace with proper secret management.',
+        languages: [],
+    },
+    {
+        id: 'dynamic-cors-origin-reflection',
+        pattern: /Access-Control-Allow-Origin.*?(?:req|request|headers\.origin|\$\{.*?origin)/i,
+        severity: 'error',
+        confidence: 0.85,
+        message: 'Dynamic CORS origin reflection detected. Echoing the request Origin header back in Access-Control-Allow-Origin enables cross-site attacks. Use an explicit allowlist instead.',
+        languages: [],
+    },
+    {
+        id: 'dynamic-cors-origin-variable',
+        pattern: /(?:allowOrigin|cors\.origin|Access-Control-Allow-Origin).*?origin/i,
+        severity: 'warning',
+        confidence: 0.6,
+        message: 'CORS configuration may dynamically reflect the request origin. This can enable cross-site attacks if not validated. Use an explicit allowlist.',
+        languages: [],
+        excludeContextPatterns: [/\[?['"][\w\-\.\/:*]+['"]\]?/, /allowedOrigins\s*[:=]\s*\[/],
+    },
+    {
+        id: 'sensitive-data-logging',
+        pattern: /console\.\w+\s*\(\s*(?:.*?(?:password|passwd|pwd|secret|token|api[_-]?key|authorization|cookie|session|credential))/i,
+        severity: 'warning',
+        confidence: 0.65,
+        message: 'Possible sensitive data in console.log statement. AI commonly leaves debug logging that exposes secrets in production.',
+        languages: ['typescript', 'javascript'],
+    },
+    {
+        id: 'python-sensitive-logging',
+        pattern: /(?:print|logging|logger)(?:\.\w+)?\s*\(\s*(?:.*?(?:password|secret|token|api[_-]?key|authorization|credential))/i,
+        severity: 'warning',
+        confidence: 0.6,
+        message: 'Possible sensitive data in log output. AI commonly leaves debug logging that exposes secrets in production.',
+        languages: ['python'],
+    },
+    {
+        id: 'jwt-empty-secret',
+        pattern: /jwt\.(?:verify|sign)\s*\([^,]+,\s*['"][^'"]{0,2}['"]/,
+        severity: 'error',
+        confidence: 0.85,
+        message: 'JWT verification/signing with empty or near-empty secret. This provides no security. Use a strong, properly stored secret key.',
+        languages: [],
+    },
+    {
+        id: 'jwt-hardcoded-secret',
+        pattern: /jwt\.(?:verify|sign)\s*\([^,]+,\s*['"][A-Za-z0-9]{8,}['"]/,
+        severity: 'error',
+        confidence: 0.8,
+        message: 'JWT verification/signing with hardcoded secret. Use environment variables or a secrets manager for the signing key.',
+        languages: [],
+        excludeContextPatterns: [/process\.env/i, /import\.meta\.env/i, /\bgetenv\b/i, /\bos\.getenv\b/i],
+    },
+    {
+        id: 'unsafe-json-parse-user-input',
+        pattern: /JSON\.(?:parse|stringify)\s*\(\s*(?:req|request|body|params|query|input|user|event)\b/i,
+        severity: 'warning',
+        confidence: 0.5,
+        message: 'JSON.parse() on user input without schema validation. AI often omits input validation. Consider using a schema validator (zod, joi, yup) to validate the parsed object.',
+        languages: ['typescript', 'javascript'],
+        excludeContextPatterns: [/zod|joi|yup|ajv|schema|validate|parseBody|safeParse/i],
+    },
     // ── Go-specific Security Patterns ──────────────────────────────
     {
         id: 'go-command-injection',
@@ -52492,6 +52933,105 @@ class PythonLanguageDetector {
     }
 }
 //# sourceMappingURL=language-specific.js.map
+;// CONCATENATED MODULE: ../core/dist/detectors/v4/unicode-invisible.js
+const INVISIBLE_RANGES = [
+    { start: 0xFE00, end: 0xFE0F, label: 'Variation Selector' },
+    { start: 0xFE20, end: 0xFE2F, label: 'Variation Selector' },
+    { start: 0xE0100, end: 0xE01EF, label: 'Variation Selector Supplement' },
+    { start: 0xE0001, end: 0xE007F, label: 'Language Tag' },
+    { start: 0xE000, end: 0xF8FF, label: 'Private Use Area (PUA)' },
+    { start: 0xFDD0, end: 0xFDEF, label: 'Noncharacter' },
+    { start: 0x2060, end: 0x2064, label: 'Invisible Format Character' },
+    { start: 0x202A, end: 0x202E, label: 'Bidi Control' },
+    { start: 0x2066, end: 0x2069, label: 'Bidi Control' },
+];
+const INVISIBLE_CODEPOINTS = new Set([
+    0x200B, // ZWSP
+    0x200C, // ZWNJ
+    0x200D, // ZWJ
+    0xFEFF, // BOM/ZWNBSP
+]);
+const NONCHARACTER_LAST_TWO = [];
+for (let plane = 0; plane <= 16; plane++) {
+    NONCHARACTER_LAST_TWO.push({ plane, offset: 0xFFFE });
+    NONCHARACTER_LAST_TWO.push({ plane, offset: 0xFFFF });
+}
+const SUPPLEMENTARY_PUA_RANGES = [
+    { start: 0xF0000, end: 0xFFFFD, label: 'Supplementary PUA-A' },
+    { start: 0x100000, end: 0x10FFFD, label: 'Supplementary PUA-B' },
+];
+function categorizeCodePoint(cp) {
+    for (const range of INVISIBLE_RANGES) {
+        if (cp >= range.start && cp <= range.end)
+            return range.label;
+    }
+    if (INVISIBLE_CODEPOINTS.has(cp)) {
+        const names = {
+            0x200B: 'Zero Width Space',
+            0x200C: 'Zero Width Non-Joiner',
+            0x200D: 'Zero Width Joiner',
+            0xFEFF: 'BOM/Zero Width No-Break Space',
+        };
+        return names[cp] ?? 'Zero Width Character';
+    }
+    for (const nc of NONCHARACTER_LAST_TWO) {
+        if (cp === nc.plane * 0x10000 + nc.offset)
+            return 'Noncharacter';
+    }
+    for (const range of SUPPLEMENTARY_PUA_RANGES) {
+        if (cp >= range.start && cp <= range.end)
+            return range.label;
+    }
+    return null;
+}
+function escapeChar(cp) {
+    if (cp <= 0xFFFF)
+        return `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+    return `U+${cp.toString(16).toUpperCase().padStart(6, '0')}`;
+}
+class UnicodeInvisibleDetector {
+    id = 'unicode-invisible';
+    name = 'Unicode Invisible Character Detector';
+    category = 'ai-faithfulness';
+    supportedLanguages = [];
+    async detect(units, _context) {
+        const results = [];
+        for (const unit of units) {
+            if (unit.kind !== 'file')
+                continue;
+            const lines = unit.source.split('\n');
+            for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+                const line = lines[lineIdx];
+                for (let col = 0; col < line.length; col++) {
+                    const cp = line.codePointAt(col);
+                    if (cp === undefined)
+                        continue;
+                    const category = categorizeCodePoint(cp);
+                    if (!category)
+                        continue;
+                    results.push({
+                        detectorId: this.id,
+                        severity: 'error',
+                        category: 'ai-faithfulness',
+                        messageKey: 'unicode-invisible.found',
+                        message: `Invisible Unicode character (${category}) detected: ${escapeChar(cp)}. This can be used to hide malicious code or confuse code reviewers.`,
+                        file: unit.file,
+                        line: lineIdx + 1,
+                        confidence: 0.95,
+                        metadata: {
+                            codePoint: cp,
+                            hex: escapeChar(cp),
+                            category,
+                            column: col + 1,
+                        },
+                    });
+                }
+            }
+        }
+        return results;
+    }
+}
+//# sourceMappingURL=unicode-invisible.js.map
 ;// CONCATENATED MODULE: ../core/dist/detectors/v4/context-coherence.js
 /**
  * ContextCoherenceDetector — V4 detector for AI context window issues.
@@ -52826,12 +53366,15 @@ class ContextCoherenceDetector {
  * - JavaLanguageDetector: Java-specific AI patterns (System.out.println, deprecated Date)
  * - KotlinLanguageDetector: Kotlin-specific AI patterns (!! abuse)
  * - PythonLanguageDetector: Python-specific AI patterns (bare except, eval, mutable defaults)
+ * - UnicodeInvisibleDetector: Invisible Unicode character detection (PUA, bidi, zero-width)
  *
  * Traditional lint concerns (duplication, type safety) are excluded.
  *
  * @since 0.4.0
  */
 // Detectors
+
+
 
 
 
@@ -52860,6 +53403,7 @@ function createV4Detectors() {
         new JavaLanguageDetector(),
         new KotlinLanguageDetector(),
         new PythonLanguageDetector(),
+        new UnicodeInvisibleDetector(),
     ];
 }
 //# sourceMappingURL=index.js.map
@@ -53580,326 +54124,6 @@ class ollama_OllamaLLMProvider {
     }
 }
 //# sourceMappingURL=ollama.js.map
-;// CONCATENATED MODULE: ../core/dist/ai/v4/types.js
-/**
- * Open Code Review V4 — AI Pipeline Types
- *
- * Type definitions for the two-stage AI scan pipeline:
- * - Stage 1 (Embedding): Fast similarity-based defect detection
- * - Stage 2 (LLM): Deep analysis of suspicious code blocks
- *
- * SLA levels control which stages run:
- * - L1 Fast: Structural detectors only (no AI)
- * - L2 Standard: + Embedding recall + Local LLM (Ollama)
- * - L3 Deep: + Remote LLM (OpenAI/Claude)
- *
- * @since 0.4.0
- */
-/**
- * Provider preset configurations.
- * Each preset maps to a protocol type and default base URL.
- */
-const types_LLM_PROVIDER_PRESETS = {
-    openai: {
-        protocol: 'openai',
-        baseUrl: 'https://api.openai.com/v1',
-    },
-    'openai-compatible': {
-        protocol: 'openai-compatible',
-        baseUrl: '', // must be provided by user
-    },
-    glm: {
-        protocol: 'openai-compatible',
-        baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
-    },
-    zai: {
-        protocol: 'openai-compatible',
-        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    },
-    deepseek: {
-        protocol: 'openai-compatible',
-        baseUrl: 'https://api.deepseek.com/v1',
-    },
-    together: {
-        protocol: 'openai-compatible',
-        baseUrl: 'https://api.together.xyz/v1',
-    },
-    fireworks: {
-        protocol: 'openai-compatible',
-        baseUrl: 'https://api.fireworks.ai/inference/v1',
-    },
-    anthropic: {
-        protocol: 'anthropic',
-        baseUrl: 'https://api.anthropic.com/v1',
-    },
-};
-/** All valid provider/preset names for CLI validation */
-const ALL_LLM_PROVIDERS = Object.keys(types_LLM_PROVIDER_PRESETS);
-//# sourceMappingURL=types.js.map
-;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/openai.js
-/**
- * OpenAI LLM Provider
- *
- * Provides LLM inference via OpenAI Chat Completions API.
- * Used for L3 SLA level where remote high-quality models are needed.
- *
- * @since 0.4.0
- */
-/**
- * OpenAI provider for remote LLM inference.
- *
- * Requires an API key. Supports all OpenAI chat models.
- *
- * @example
- * ```ts
- * const provider = new OpenAIProvider(process.env.OPENAI_API_KEY, 'gpt-4o-mini');
- * if (await provider.isAvailable()) {
- *   const response = await provider.complete('Review this code:', { maxTokens: 1000 });
- * }
- * ```
- */
-class OpenAILLMProvider {
-    apiKey;
-    model;
-    baseUrl;
-    name = 'openai';
-    constructor(apiKey, model = 'gpt-4o-mini', baseUrl = 'https://api.openai.com/v1') {
-        this.apiKey = apiKey;
-        this.model = model;
-        this.baseUrl = baseUrl;
-    }
-    /**
-     * Send a completion request to OpenAI Chat Completions API.
-     */
-    async complete(prompt, options) {
-        const url = `${this.baseUrl}/chat/completions`;
-        const startTime = Date.now();
-        const messages = [];
-        if (options?.system) {
-            messages.push({ role: 'system', content: options.system });
-        }
-        messages.push({ role: 'user', content: prompt });
-        const body = {
-            model: this.model,
-            messages,
-        };
-        if (options?.maxTokens) {
-            body.max_tokens = options.maxTokens;
-        }
-        if (options?.temperature !== undefined) {
-            body.temperature = options.temperature;
-        }
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${this.apiKey}`,
-            },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(60_000),
-        });
-        if (!response.ok) {
-            const errorBody = await response.text().catch(() => 'unknown error');
-            throw new Error(`OpenAI API error (${response.status}): ${errorBody}`);
-        }
-        const data = (await response.json());
-        const latencyMs = Date.now() - startTime;
-        const content = data.choices[0]?.message?.content ?? '';
-        return {
-            content,
-            usage: data.usage
-                ? {
-                    prompt: data.usage.prompt_tokens,
-                    completion: data.usage.completion_tokens,
-                    total: data.usage.total_tokens,
-                }
-                : undefined,
-            latencyMs,
-        };
-    }
-    /**
-     * Check if the provider is available (has API key configured).
-     */
-    async isAvailable() {
-        return !!this.apiKey && this.apiKey.length > 0;
-    }
-}
-//# sourceMappingURL=openai.js.map
-;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/anthropic.js
-/**
- * Anthropic LLM Provider
- *
- * Provides LLM inference via Anthropic Messages API.
- * Used for L3 SLA level as an alternative to OpenAI.
- *
- * @since 0.4.0
- */
-/**
- * Anthropic provider for remote LLM inference using Claude models.
- *
- * Requires an API key. Supports Claude 3.5 and newer models.
- *
- * @example
- * ```ts
- * const provider = new AnthropicProvider(process.env.ANTHROPIC_API_KEY, 'claude-3-5-haiku-20241022');
- * if (await provider.isAvailable()) {
- *   const response = await provider.complete('Review this code:', { maxTokens: 1000 });
- * }
- * ```
- */
-class AnthropicLLMProvider {
-    apiKey;
-    model;
-    baseUrl;
-    name = 'anthropic';
-    constructor(apiKey, model = 'claude-3-5-haiku-20241022', baseUrl = 'https://api.anthropic.com/v1') {
-        this.apiKey = apiKey;
-        this.model = model;
-        this.baseUrl = baseUrl;
-    }
-    /**
-     * Send a completion request to Anthropic Messages API.
-     */
-    async complete(prompt, options) {
-        const url = `${this.baseUrl}/messages`;
-        const startTime = Date.now();
-        const body = {
-            model: this.model,
-            max_tokens: options?.maxTokens ?? 4096,
-            messages: [{ role: 'user', content: prompt }],
-        };
-        if (options?.system) {
-            body.system = options.system;
-        }
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': this.apiKey,
-                'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(60_000),
-        });
-        if (!response.ok) {
-            const errorBody = await response.text().catch(() => 'unknown error');
-            throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
-        }
-        const data = (await response.json());
-        const latencyMs = Date.now() - startTime;
-        // Extract text from content blocks
-        const content = data.content
-            .filter(block => block.type === 'text')
-            .map(block => block.text ?? '')
-            .join('');
-        return {
-            content,
-            usage: data.usage
-                ? {
-                    prompt: data.usage.input_tokens,
-                    completion: data.usage.output_tokens,
-                    total: data.usage.input_tokens + data.usage.output_tokens,
-                }
-                : undefined,
-            latencyMs,
-        };
-    }
-    /**
-     * Check if the provider is available (has API key configured).
-     */
-    async isAvailable() {
-        return !!this.apiKey && this.apiKey.length > 0;
-    }
-}
-//# sourceMappingURL=anthropic.js.map
-;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/provider-factory.js
-/**
- * LLM Provider Factory
- *
- * Creates the appropriate LLM provider adapter based on configuration.
- * Supports:
- * - OpenAI official API
- * - Any OpenAI-compatible API (GLM, DeepSeek, Together AI, Fireworks, Azure, etc.)
- * - Anthropic Messages API
- * - Local Ollama
- *
- * Provider presets auto-fill `baseUrl`. The factory resolves presets
- * to protocol-specific adapters.
- *
- * @since 0.4.0
- */
-
-
-
-
-/**
- * Resolve a provider preset to its effective config.
- */
-function resolveProviderPreset(config) {
-    const preset = types_LLM_PROVIDER_PRESETS[config.provider];
-    if (!preset) {
-        throw new Error(`Unknown LLM provider: "${config.provider}". ` +
-            `Valid providers: ${Object.keys(types_LLM_PROVIDER_PRESETS).join(', ')}`);
-    }
-    return {
-        adapter: preset.protocol,
-        baseUrl: config.baseUrl ?? preset.baseUrl,
-    };
-}
-/**
- * Create a remote LLM provider from configuration.
- *
- * Automatically resolves provider presets (glm, deepseek, etc.)
- * to the appropriate adapter.
- *
- * @example
- * ```ts
- * // GLM preset (auto-resolves to OpenAI-compatible)
- * const provider = createRemoteLLMProvider({
- *   provider: 'glm',
- *   model: 'pony-alpha-2',
- *   apiKey: 'your-key',
- * });
- *
- * // Custom OpenAI-compatible service
- * const provider = createRemoteLLMProvider({
- *   provider: 'openai-compatible',
- *   model: 'my-model',
- *   apiKey: 'your-key',
- *   baseUrl: 'https://my-llm-server.com/v1',
- * });
- * ```
- */
-function createRemoteLLMProvider(config) {
-    const { adapter, baseUrl } = resolveProviderPreset(config);
-    if (!baseUrl) {
-        throw new Error(`No baseUrl for provider "${config.provider}". ` +
-            `Set --api-base or provide baseUrl in config.`);
-    }
-    switch (adapter) {
-        case 'openai':
-        case 'openai-compatible':
-            // Both use OpenAI Chat Completions protocol
-            return new OpenAILLMProvider(config.apiKey, config.model, baseUrl);
-        case 'anthropic':
-            return new AnthropicLLMProvider(config.apiKey, config.model, baseUrl);
-        default:
-            throw new Error(`Unhandled adapter type: "${adapter}"`);
-    }
-}
-/**
- * Create a local Ollama LLM provider.
- */
-function createLocalLLMProvider(model, baseUrl) {
-    return new OllamaLLMProvider(model, baseUrl ?? 'http://localhost:11434');
-}
-/**
- * Validate if a provider name is a valid preset.
- */
-function isValidProvider(name) {
-    return name in LLM_PROVIDER_PRESETS;
-}
-//# sourceMappingURL=provider-factory.js.map
 ;// CONCATENATED MODULE: ../core/dist/ai/v4/llm/index.js
 /**
  * LLM Providers for V4 AI Pipeline Stage 2.
@@ -54556,7 +54780,7 @@ class pipeline_AIScanPipeline {
         }
         // Fallback to remote (L3 only)
         if (this.config.remote) {
-            return createRemoteLLMProvider(this.config.remote);
+            return provider_factory_createRemoteLLMProvider(this.config.remote);
         }
         return null;
     }

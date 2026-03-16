@@ -1,4 +1,4 @@
-import type { CodeUnit } from '../../ir/types.js';
+import type { CodeUnit, SupportedLanguage } from '../../ir/types.js';
 import type { V4Detector, DetectorResult, DetectorContext } from './types.js';
 
 interface UnicodeRange {
@@ -73,7 +73,7 @@ export class UnicodeInvisibleDetector implements V4Detector {
   readonly id = 'unicode-invisible';
   readonly name = 'Unicode Invisible Character Detector';
   readonly category = 'ai-faithfulness' as const;
-  readonly supportedLanguages: string[] = [];
+  readonly supportedLanguages: SupportedLanguage[] = [];
 
   async detect(units: CodeUnit[], _context: DetectorContext): Promise<DetectorResult[]> {
     const results: DetectorResult[] = [];
