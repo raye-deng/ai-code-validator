@@ -236,6 +236,8 @@ npx @opencodereview/mcp-server
 
 **Available MCP Tools**: `ocr_scan` (quality gate scan), `ocr_heal` (AI auto-fix), `ocr_explain` (issue explanation).
 
+> 💡 **Chrome DevTools MCP Compatible**: The OCR MCP Server follows the standard [Model Context Protocol](https://modelcontextprotocol.io/). Pair it with Google's [Chrome DevTools MCP Server](https://developer.chrome.com/docs/devtools/mcp) for a complete AI-native dev workflow — one inspects your running app, the other inspects your source code.
+
 ## Project Structure
 
 ```
@@ -253,6 +255,10 @@ packages/
 - **DevOps / Platform engineers** — Add a quality gate to CI/CD pipelines without sending code to cloud services
 - **Security-conscious teams** — Run everything locally (Ollama), keep your code on your machines
 - **Solo developers** — Free, fast, and works with zero configuration (`npx @opencodereview/cli scan src/`)
+
+## Featured On
+
+<a href="https://www.producthunt.com/products/open-code-review"><img src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=XXXXX&theme=dark&period=daily" alt="Product Hunt" width="250" /></a>
 
 ## License
 
