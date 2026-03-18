@@ -127,16 +127,34 @@ export class ParserManager {
       },
     });
 
-    // Load grammars for all supported languages
+    // Load grammars for all supported languages SEQUENTIALLY.
+    // web-tree-sitter ≤0.24.x has a race condition when loading multiple
+    // WASM grammars concurrently via Promise.all() — the Emscripten glue
+    // code shares global state during instantiation, causing cross-language
+    // symbol contamination (e.g., "bad export type for
+    // 'tree_sitter_javascript_external_scanner_create': undefined").
+    // This manifests on Node.js ≤20 but not on Node.js ≥22 due to
+    // differences in V8's WebAssembly.instantiate isolation.
+    // See: https://github.com/nicolo-ribaudo/tree-sitter/nicolo-ribaudo/tree-sitter/issues/5172
     const languages = Object.keys(GRAMMAR_FILES) as SupportedLanguage[];
-    const loadPromises = languages.map(async (lang) => {
+    const errors: Array<{ lang: SupportedLanguage; error: Error }> = [];
+    for (const lang of languages) {
       const grammarFile = GRAMMAR_FILES[lang];
-      const grammarPath = resolveGrammarPath(grammarFile);
-      const language = await Parser.Language.load(grammarPath);
-      this.languages.set(lang, language);
-    });
-
-    await Promise.all(loadPromises);
+      try {
+        const grammarPath = resolveGrammarPath(grammarFile);
+        const language = await Parser.Language.load(grammarPath);
+        this.languages.set(lang, language);
+      } catch (err) {
+        // Non-fatal: log and continue so other languages still work.
+        // The grammar file may be missing or ABI-incompatible.
+        errors.push({ lang, error: err as Error });
+      }
+    }
+    if (errors.length > 0 && this.languages.size === 0) {
+      // All grammars failed — this is fatal.
+      const msgs = errors.map(e => `  ${e.lang}: ${e.error.message}`).join('\n');
+      throw new Error(`Failed to load any tree-sitter grammars:\n${msgs}`);
+    }
     this._initialized = true;
   }
 

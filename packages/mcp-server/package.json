@@ -41,7 +41,7 @@
   "homepage": "https://codes.evallab.ai",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@opencodereview/core": "^2.1.1",
+    "@opencodereview/core": "workspace:*",
     "zod": "^3.24.0"
   },
   "devDependencies": {
