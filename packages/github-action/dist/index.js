@@ -47877,9 +47877,14 @@ function resolveGrammarPath(grammarFile) {
 class ParserManager {
     languages = new Map();
     _initialized = false;
+    _initFailed = false;
     /** Whether the parser has been initialized */
     get initialized() {
         return this._initialized;
+    }
+    /** Whether WASM initialization failed (falls back to L1 regex-only mode) */
+    get initFailed() {
+        return this._initFailed;
     }
     /**
      * Initialize tree-sitter WASM runtime and load all supported grammars.
@@ -47887,41 +47892,70 @@ class ParserManager {
      * Safe to call multiple times (idempotent).
      */
     async init() {
-        if (this._initialized)
+        if (this._initialized || this._initFailed)
             return;
-        // Resolve the tree-sitter WASM binary path.
-        // web-tree-sitter needs its own .wasm file to initialize the runtime.
-        // In bundled environments (vitest, webpack), the auto-detection may fail,
-        // so we provide an explicit locateFile function.
-        let treeSitterWasmDir;
         try {
-            const req = (0,external_node_module_.createRequire)(import.meta.url);
-            const treeSitterMainPath = req.resolve('web-tree-sitter');
-            treeSitterWasmDir = (0,external_node_path_namespaceObject.dirname)(treeSitterMainPath);
-        }
-        catch {
-            treeSitterWasmDir = '';
-        }
-        await Parser.init({
-            locateFile: (scriptName) => {
-                if (treeSitterWasmDir && scriptName.endsWith('.wasm')) {
-                    const candidate = (0,external_node_path_namespaceObject.join)(treeSitterWasmDir, scriptName);
-                    if ((0,external_node_fs_namespaceObject.existsSync)(candidate))
-                        return candidate;
+            // Resolve the tree-sitter WASM binary path.
+            // web-tree-sitter needs its own .wasm file to initialize the runtime.
+            // In bundled environments (vitest, webpack), the auto-detection may fail,
+            // so we provide an explicit locateFile function.
+            let treeSitterWasmDir;
+            try {
+                const req = (0,external_node_module_.createRequire)(import.meta.url);
+                const treeSitterMainPath = req.resolve('web-tree-sitter');
+                treeSitterWasmDir = (0,external_node_path_namespaceObject.dirname)(treeSitterMainPath);
+            }
+            catch {
+                treeSitterWasmDir = '';
+            }
+            await Parser.init({
+                locateFile: (scriptName) => {
+                    if (treeSitterWasmDir && scriptName.endsWith('.wasm')) {
+                        const candidate = (0,external_node_path_namespaceObject.join)(treeSitterWasmDir, scriptName);
+                        if ((0,external_node_fs_namespaceObject.existsSync)(candidate))
+                            return candidate;
+                    }
+                    return scriptName;
+                },
+            });
+            // Load grammars for all supported languages SEQUENTIALLY.
+            // web-tree-sitter ≤0.24.x has a race condition when loading multiple
+            // WASM grammars concurrently via Promise.all() — the Emscripten glue
+            // code shares global state during instantiation, causing cross-language
+            // symbol contamination (e.g., "bad export type for
+            // 'tree_sitter_javascript_external_scanner_create': undefined").
+            // This manifests on Node.js ≤20 but not on Node.js ≥22 due to
+            // differences in V8's WebAssembly.instantiate isolation.
+            // See: https://github.com/nicolo-ribaudo/tree-sitter/nicolo-ribaudo/tree-sitter/issues/5172
+            const languages = Object.keys(GRAMMAR_FILES);
+            const errors = [];
+            for (const lang of languages) {
+                const grammarFile = GRAMMAR_FILES[lang];
+                try {
+                    const grammarPath = resolveGrammarPath(grammarFile);
+                    const language = await Parser.Language.load(grammarPath);
+                    this.languages.set(lang, language);
                 }
-                return scriptName;
-            },
-        });
-        // Load grammars for all supported languages
-        const languages = Object.keys(GRAMMAR_FILES);
-        const loadPromises = languages.map(async (lang) => {
-            const grammarFile = GRAMMAR_FILES[lang];
-            const grammarPath = resolveGrammarPath(grammarFile);
-            const language = await Parser.Language.load(grammarPath);
-            this.languages.set(lang, language);
-        });
-        await Promise.all(loadPromises);
-        this._initialized = true;
+                catch (err) {
+                    // Non-fatal: log and continue so other languages still work.
+                    // The grammar file may be missing or ABI-incompatible.
+                    errors.push({ lang, error: err });
+                }
+            }
+            if (errors.length > 0 && this.languages.size === 0) {
+                // All grammars failed — this is fatal within the try block,
+                // but will be caught below and treated as init failure.
+                const msgs = errors.map(e => `  ${e.lang}: ${e.error.message}`).join('\n');
+                throw new Error(`Failed to load any tree-sitter grammars:\n${msgs}`);
+            }
+            this._initialized = true;
+        }
+        catch (err) {
+            // Log warning but don't crash — fall back to regex-based detection
+            console.warn(`[OCR] Tree-sitter WASM initialization failed: ${err}`);
+            console.warn('[OCR] Falling back to regex-based analysis (L1 only)');
+            this._initFailed = true;
+        }
     }
     /**
      * Parse source code into a tree-sitter CST.
@@ -47932,12 +47966,12 @@ class ParserManager {
      * @throws Error if not initialized or language not supported
      */
     parse(source, language) {
-        if (!this._initialized) {
-            throw new Error('ParserManager not initialized. Call init() first.');
+        if (this._initFailed || !this._initialized) {
+            return null; // Caller should handle null → use regex fallback
         }
         const lang = this.languages.get(language);
         if (!lang) {
-            throw new Error(`No grammar loaded for language: ${language}`);
+            return null; // Grammar not loaded for this language
         }
         const parser = new Parser();
         parser.setLanguage(lang);
@@ -51071,11 +51105,11 @@ class HallucinatedImportDetector {
     category = 'ai-faithfulness';
     supportedLanguages = []; // All languages
     async detect(units, context) {
-        // If no registry manager is provided (offline mode), skip detection
-        if (!context.registryManager) {
-            return [];
-        }
         const results = [];
+        // If no registry manager is provided (offline mode), fall back to whitelist-based detection
+        if (!context.registryManager) {
+            return this.detectWithoutRegistry(units, context, results);
+        }
         // Group imports by language, deduplicating by package name
         const importsByLanguage = this.groupImportsByLanguage(units);
         for (const [language, packageMap] of importsByLanguage.entries()) {
@@ -51122,6 +51156,74 @@ class HallucinatedImportDetector {
             }
         }
         return results;
+    }
+    /**
+     * Fallback detection when no registry manager is available (offline mode).
+     * Flags non-relative, non-builtin, non-project imports as potentially hallucinated.
+     */
+    detectWithoutRegistry(units, context, results) {
+        const projectDeps = context.projectDependencies
+            ? new Set(context.projectDependencies)
+            : null;
+        for (const unit of units) {
+            if (unit.kind !== 'file')
+                continue;
+            const builtins = BUILTIN_SETS[unit.language];
+            if (!builtins)
+                continue;
+            for (const imp of unit.imports) {
+                // Skip relative imports
+                if (imp.isRelative)
+                    continue;
+                const packageName = this.extractPackageName(imp.module, unit.language);
+                // Skip builtins
+                if (this.isBuiltin(packageName, unit.language, builtins))
+                    continue;
+                // Skip project dependencies
+                if (projectDeps && this.matchesProjectDep(packageName, projectDeps))
+                    continue;
+                results.push({
+                    detectorId: this.id,
+                    severity: 'warning',
+                    category: this.category,
+                    messageKey: 'hallucinated-import.potential-hallucination-offline',
+                    message: `Import "${packageName}" is not a known built-in or project dependency and could not be verified against the ${this.getRegistryName(unit.language)} registry (offline mode). This may be a hallucinated package name.`,
+                    file: unit.file,
+                    line: imp.line + 1,
+                    confidence: 0.6,
+                    metadata: {
+                        packageName,
+                        language: unit.language,
+                        registry: this.getRegistryName(unit.language),
+                        raw: imp.raw,
+                        offline: true,
+                    },
+                });
+            }
+        }
+        return results;
+    }
+    /**
+     * Check if a package name matches any project dependency.
+     * Supports both exact match and top-level prefix match (e.g., "lodash" matches "lodash/fp").
+     */
+    matchesProjectDep(packageName, projectDeps) {
+        if (projectDeps.has(packageName))
+            return true;
+        // For npm scoped/regular packages, check if the import is a subpath of a known dep
+        const topLevel = packageName.split('/')[0];
+        if (topLevel !== packageName && projectDeps.has(topLevel))
+            return true;
+        // For scoped packages, check top-level scope/name
+        if (packageName.startsWith('@')) {
+            const parts = packageName.split('/');
+            if (parts.length >= 2) {
+                const scopeName = `${parts[0]}/${parts[1]}`;
+                if (projectDeps.has(scopeName) && scopeName !== packageName)
+                    return true;
+            }
+        }
+        return false;
     }
     /**
      * Group imports from all CodeUnits by language and package name.
@@ -51308,6 +51410,309 @@ const TYPESCRIPT_DEPRECATIONS = [
         since: 'Node.js 6',
         confidence: 0.9,
         description: 'SlowBuffer is deprecated in favor of Buffer.allocUnsafeSlow()',
+    },
+];
+// ── React deprecated lifecycle methods & APIs ──────────────────────
+const REACT_DEPRECATIONS = [
+    {
+        pattern: /\bcomponentWillMount\b/,
+        replacement: 'componentDidMount or useEffect',
+        since: 'React 16.3',
+        confidence: 0.95,
+        description: 'componentWillMount is unsafe for async rendering. Use componentDidMount or useEffect instead.',
+    },
+    {
+        pattern: /\bcomponentWillReceiveProps\b/,
+        replacement: 'getDerivedStateFromProps or componentDidUpdate',
+        since: 'React 16.3',
+        confidence: 0.95,
+        description: 'componentWillReceiveProps is unsafe for async rendering. Use static getDerivedStateFromProps or componentDidUpdate.',
+    },
+    {
+        pattern: /\bcomponentWillUpdate\b/,
+        replacement: 'getSnapshotBeforeUpdate or componentDidUpdate',
+        since: 'React 16.3',
+        confidence: 0.95,
+        description: 'componentWillUpdate is unsafe for async rendering. Use getSnapshotBeforeUpdate or componentDidUpdate.',
+    },
+    {
+        pattern: /\bgetDefaultProps\b/,
+        replacement: 'static defaultProps class property',
+        since: 'React 16.3',
+        confidence: 0.9,
+        description: 'getDefaultProps is deprecated. Use static defaultProps as a class property.',
+    },
+    {
+        pattern: /\bReact\.createFactory\b/,
+        replacement: 'React.createElement or JSX',
+        since: 'React 16',
+        confidence: 0.9,
+        description: 'React.createFactory is deprecated. Use React.createElement or JSX directly.',
+    },
+    {
+        pattern: /\bReact\.DOM\b/,
+        replacement: 'react-dom package',
+        since: 'React 15.5',
+        confidence: 0.9,
+        description: 'React.DOM is removed. Import from react-dom instead.',
+    },
+    {
+        pattern: /\bfindDOMNode\b/,
+        replacement: 'React refs (useRef / React.createRef)',
+        since: 'React 18',
+        confidence: 0.95,
+        description: 'findDOMNode is deprecated and removed in strict mode. Use React refs instead.',
+    },
+    {
+        pattern: /\bString\s+refs\s*\(this\.refs\)/,
+        replacement: 'React.createRef() or useRef()',
+        since: 'React 16.3',
+        confidence: 0.85,
+        description: 'String refs are deprecated. Use React.createRef() or useRef() callback refs.',
+    },
+    {
+        pattern: /\bthis\.isMounted\b/,
+        replacement: 'componentDidMount + cleanup in componentWillUnmount',
+        since: 'React 16',
+        confidence: 0.95,
+        description: 'isMounted is deprecated as an anti-pattern. Restructure to use proper lifecycle cleanup.',
+    },
+    {
+        pattern: /\bUNSAFE_componentWillMount\b/,
+        replacement: 'componentDidMount or useEffect',
+        since: 'React 16.3',
+        confidence: 0.9,
+        description: 'UNSAFE_componentWillMount still exists but is a migration path only. Move to useEffect.',
+    },
+    {
+        pattern: /\bUNSAFE_componentWillReceiveProps\b/,
+        replacement: 'getDerivedStateFromProps or componentDidUpdate',
+        since: 'React 16.3',
+        confidence: 0.9,
+        description: 'UNSAFE_componentWillReceiveProps is a migration path only. Move to getDerivedStateFromProps.',
+    },
+    {
+        pattern: /\bUNSAFE_componentWillUpdate\b/,
+        replacement: 'getSnapshotBeforeUpdate or componentDidUpdate',
+        since: 'React 16.3',
+        confidence: 0.9,
+        description: 'UNSAFE_componentWillUpdate is a migration path only. Move to getSnapshotBeforeUpdate.',
+    },
+    {
+        pattern: /\bReact\.PureComponent\s*\(\s*\{\s*\}/,
+        replacement: 'React.memo() for functional components',
+        since: 'React 16.6+',
+        confidence: 0.7,
+        description: 'Consider using React.memo() for functional components instead of PureComponent class.',
+    },
+    {
+        pattern: /\blegacyRenderSubtreeIntoContainer\b/,
+        replacement: 'createRoot().render()',
+        since: 'React 18',
+        confidence: 0.95,
+        description: 'ReactDOM.render is replaced by createRoot().render() in React 18.',
+    },
+    {
+        pattern: /\bReactDOM\.render\b/,
+        replacement: 'createRoot().render()',
+        since: 'React 18',
+        confidence: 0.95,
+        description: 'ReactDOM.render is deprecated in React 18. Use createRoot from react-dom/client.',
+    },
+    {
+        pattern: /\bReactDOM\.hydrate\b/,
+        replacement: 'hydrateRoot()',
+        since: 'React 18',
+        confidence: 0.95,
+        description: 'ReactDOM.hydrate is deprecated in React 18. Use hydrateRoot from react-dom/client.',
+    },
+    {
+        pattern: /\bReactDOM\.unmountComponentAtNode\b/,
+        replacement: 'root.unmount()',
+        since: 'React 18',
+        confidence: 0.95,
+        description: 'unmountComponentAtNode is deprecated in React 18. Use root.unmount() instead.',
+    },
+];
+// ── Vue deprecated APIs ────────────────────────────────────────────
+const VUE_DEPRECATIONS = [
+    {
+        pattern: /\bVue\.set\b/,
+        replacement: 'Direct assignment (reactiveProxy.prop = value)',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'Vue.set is not needed in Vue 3 — the reactivity system handles it natively.',
+    },
+    {
+        pattern: /\bVue\.delete\b/,
+        replacement: 'delete reactiveProxy.prop',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'Vue.delete is not needed in Vue 3 — use the native delete operator.',
+    },
+    {
+        pattern: /\bthis\.\$set\b/,
+        replacement: 'Direct assignment',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'this.$set is removed in Vue 3. Reactivity handles reassignment natively.',
+    },
+    {
+        pattern: /\bthis\.\$delete\b/,
+        replacement: 'delete this.prop',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'this.$delete is removed in Vue 3. Use native delete.',
+    },
+    {
+        pattern: /\bthis\.\$on\b/,
+        replacement: 'mitt or provide/inject',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'this.$on (event bus) is removed in Vue 3. Use an external event emitter like mitt.',
+    },
+    {
+        pattern: /\bthis\.\$off\b/,
+        replacement: 'mitt or provide/inject',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'this.$off is removed in Vue 3. Use an external event emitter.',
+    },
+    {
+        pattern: /\bthis\.\$once\b/,
+        replacement: 'mitt or provide/inject',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'this.$once is removed in Vue 3.',
+    },
+    {
+        pattern: /\bthis\.\$listeners\b/,
+        replacement: '$attrs (Vue 3 merges $listeners into $attrs)',
+        since: 'Vue 3',
+        confidence: 0.9,
+        description: '$listeners is removed in Vue 3 — listeners are now part of $attrs.',
+    },
+    {
+        pattern: /\bthis\.\$children\b/,
+        replacement: 'template refs or provide/inject',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: '$children is removed in Vue 3. Use template refs or provide/inject.',
+    },
+    {
+        pattern: /\bthis\.\$scopedSlots\b/,
+        replacement: '$slots (Vue 3 unifies $slots and $scopedSlots)',
+        since: 'Vue 3',
+        confidence: 0.9,
+        description: '$scopedSlots is removed in Vue 3. Use $slots for all slots.',
+    },
+    {
+        pattern: /\bVue\.filter\b/,
+        replacement: 'computed properties or methods',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: 'Filters are removed in Vue 3. Use computed properties or method calls in templates.',
+    },
+    {
+        pattern: /\bVue\.directive\b/,
+        replacement: 'app.directive()',
+        since: 'Vue 3',
+        confidence: 0.85,
+        description: 'Vue.directive is removed in Vue 3. Register directives on the app instance.',
+    },
+    {
+        pattern: /\bVue\.component\b/,
+        replacement: 'app.component()',
+        since: 'Vue 3',
+        confidence: 0.8,
+        description: 'Vue.component global registration syntax changed in Vue 3. Use app.component().',
+    },
+    {
+        pattern: /\bVue\.mixin\b/,
+        replacement: 'composables or provide/inject',
+        since: 'Vue 3',
+        confidence: 0.9,
+        description: 'Vue.mixin is removed in Vue 3. Use composables or provide/inject for shared logic.',
+    },
+    {
+        pattern: /\bVue\.use\b/,
+        replacement: 'app.use()',
+        since: 'Vue 3',
+        confidence: 0.85,
+        description: 'Vue.use plugin installation changed in Vue 3. Use app.use() on the app instance.',
+    },
+    {
+        pattern: /\bnew\s+Vue\b/,
+        replacement: 'createApp()',
+        since: 'Vue 3',
+        confidence: 0.85,
+        description: 'new Vue() constructor is removed in Vue 3. Use createApp() from vue.',
+    },
+    {
+        pattern: /\bv-bind:\w+\.sync\b/,
+        replacement: 'v-model:propName',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: '.sync modifier is removed in Vue 3. Use v-model:propName instead.',
+    },
+    {
+        pattern: /\.\w+\.sync(?:\s|=|>|$)/,
+        replacement: 'v-model:propName',
+        since: 'Vue 3',
+        confidence: 0.85,
+        description: '.sync modifier is removed in Vue 3. Use v-model:propName instead.',
+    },
+    {
+        pattern: /\bv-on\.native\b/,
+        replacement: 'emits option',
+        since: 'Vue 3',
+        confidence: 0.95,
+        description: '.native modifier is removed in Vue 3. Use the emits option to declare component events.',
+    },
+];
+// ── Angular deprecated APIs ────────────────────────────────────────
+const ANGULAR_DEPRECATIONS = [
+    {
+        pattern: /\bHttpClientModule\b/,
+        replacement: 'provideHttpClient()',
+        since: 'Angular 17',
+        confidence: 0.9,
+        description: 'HttpClientModule is deprecated in Angular 17+. Use provideHttpClient() in app.config.',
+    },
+    {
+        pattern: /\bBrowserAnimationsModule\b/,
+        replacement: 'provideAnimations() or provideAnimationsAsync()',
+        since: 'Angular 17',
+        confidence: 0.9,
+        description: 'BrowserAnimationsModule is deprecated in Angular 17+. Use provideAnimations() in app.config.',
+    },
+    {
+        pattern: /\b\@angular\/platform-browser-dynamic\b/,
+        replacement: 'bootstrapApplication()',
+        since: 'Angular 17',
+        confidence: 0.7,
+        description: 'platformBrowserDynamic().bootstrapModule() is the legacy bootstrap method. Use bootstrapApplication().',
+    },
+    {
+        pattern: /\bViewChild\b.*?\bstatic\s*:\s*true\b/,
+        replacement: 'signals-based ViewChild (no static flag needed)',
+        since: 'Angular 17+',
+        confidence: 0.7,
+        description: 'ViewChild static flag is being phased out. Consider using Angular signals.',
+    },
+    {
+        pattern: /\bRenderer\b/,
+        replacement: 'Renderer2',
+        since: 'Angular 4+',
+        confidence: 0.85,
+        description: 'Renderer is deprecated since Angular 4. Use Renderer2 instead.',
+    },
+    {
+        pattern: /\b\@angular\/common\/http\/\$Http\b/,
+        replacement: 'HttpClient',
+        since: 'Angular 5',
+        confidence: 0.95,
+        description: 'The legacy Http service is removed. Use HttpClient from @angular/common/http.',
     },
 ];
 const PYTHON_DEPRECATIONS = [
@@ -51517,9 +51922,16 @@ const KOTLIN_DEPRECATIONS = [
     ...JAVA_DEPRECATIONS,
 ];
 // ─── Deprecation patterns map ──────────────────────────────────────
+/** Combined TypeScript/JavaScript patterns including Node.js + React + Vue + Angular. */
+const TS_JS_DEPRECATIONS = [
+    ...TYPESCRIPT_DEPRECATIONS,
+    ...REACT_DEPRECATIONS,
+    ...VUE_DEPRECATIONS,
+    ...ANGULAR_DEPRECATIONS,
+];
 const DEPRECATION_PATTERNS = new Map([
-    ['typescript', TYPESCRIPT_DEPRECATIONS],
-    ['javascript', TYPESCRIPT_DEPRECATIONS],
+    ['typescript', TS_JS_DEPRECATIONS],
+    ['javascript', TS_JS_DEPRECATIONS],
     ['python', PYTHON_DEPRECATIONS],
     ['java', JAVA_DEPRECATIONS],
     ['go', GO_DEPRECATIONS],
@@ -51778,6 +52190,8 @@ class OverEngineeringDetector {
         this.detectHighComplexity(units, thresholds, results);
         // Analysis 5: Excessive abstraction (many single-method interfaces/classes)
         this.detectExcessiveAbstraction(units, results);
+        // Analysis 6: Single-implementation abstractions
+        this.detectSingleImplAbstractions(units, results);
         return results;
     }
     /**
@@ -51950,6 +52364,91 @@ class OverEngineeringDetector {
                     },
                 });
             }
+        }
+    }
+    /**
+     * Detect abstract classes and interfaces with only one implementation.
+     * This is a common AI over-engineering pattern: creating unnecessary abstractions.
+     */
+    detectSingleImplAbstractions(units, results) {
+        const LANGUAGES_WITH_CLASSES = new Set(['typescript', 'javascript', 'java', 'kotlin']);
+        // Collect all units per file, filter by supported languages
+        const fileUnits = units.filter(u => u.kind === 'file' && LANGUAGES_WITH_CLASSES.has(u.language));
+        if (fileUnits.length === 0)
+            return;
+        // Collect abstract classes and interfaces
+        const abstractNames = new Set();
+        // Map: abstract name → [{implName, file, line}]
+        const implementations = new Map();
+        // Map: abstract name → {file, line}
+        const definitions = new Map();
+        for (const unit of fileUnits) {
+            const source = unit.source;
+            if (!source)
+                continue;
+            // Find abstract class definitions
+            const abstractClassRegex = /abstract\s+class\s+(\w+)/g;
+            let match;
+            while ((match = abstractClassRegex.exec(source)) !== null) {
+                const name = match[1];
+                abstractNames.add(name);
+                const line = source.substring(0, match.index).split('\n').length - 1;
+                definitions.set(name, { file: unit.file, line });
+            }
+            // Find interface definitions
+            const interfaceRegex = /interface\s+(\w+)/g;
+            while ((match = interfaceRegex.exec(source)) !== null) {
+                const name = match[1];
+                abstractNames.add(name);
+                const line = source.substring(0, match.index).split('\n').length - 1;
+                definitions.set(name, { file: unit.file, line });
+            }
+            // Find extends relationships
+            const extendsRegex = /class\s+(\w+)\s+extends\s+(\w+)/g;
+            while ((match = extendsRegex.exec(source)) !== null) {
+                const implName = match[1];
+                const parentName = match[2];
+                if (!implementations.has(parentName)) {
+                    implementations.set(parentName, []);
+                }
+                const line = source.substring(0, match.index).split('\n').length - 1;
+                implementations.get(parentName).push({ implName, file: unit.file, line });
+            }
+            // Find implements relationships
+            const implementsRegex = /class\s+(\w+)\s+implements\s+(\w+)/g;
+            while ((match = implementsRegex.exec(source)) !== null) {
+                const implName = match[1];
+                const ifaceName = match[2];
+                if (!implementations.has(ifaceName)) {
+                    implementations.set(ifaceName, []);
+                }
+                const line = source.substring(0, match.index).split('\n').length - 1;
+                implementations.get(ifaceName).push({ implName, file: unit.file, line });
+            }
+        }
+        // Flag abstractions with exactly one implementation
+        for (const name of abstractNames) {
+            const impls = implementations.get(name);
+            if (!impls || impls.length !== 1)
+                continue;
+            const def = definitions.get(name);
+            const impl = impls[0];
+            results.push({
+                detectorId: this.id,
+                severity: 'warning',
+                category: this.category,
+                messageKey: 'over-engineering.single-impl-abstraction',
+                message: `Abstract class/interface '${name}' has only one implementation '${impl.implName}'. Consider simplifying by inlining the implementation.`,
+                file: def?.file || impl.file,
+                line: (def?.line ?? impl.line) + 1,
+                confidence: 0.7,
+                metadata: {
+                    abstractName: name,
+                    implementationName: impl.implName,
+                    implementationFile: impl.file,
+                    analysisType: 'single-impl-abstraction',
+                },
+            });
         }
     }
     /**
@@ -54945,6 +55444,8 @@ class V4Scanner {
                 const absolutePath = (0,external_node_path_namespaceObject.join)(this.config.projectRoot, file);
                 const source = await (0,promises_namespaceObject.readFile)(absolutePath, 'utf-8');
                 const tree = this.parserManager.parse(source, language);
+                if (!tree)
+                    continue; // WASM init failed — skip AST extraction, L1 regex still runs
                 const extractor = this.extractors.get(language);
                 if (extractor) {
                     const units = extractor.extract(tree, file, source);
