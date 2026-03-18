@@ -68,6 +68,9 @@ export class OverEngineeringDetector implements V4Detector {
     // Analysis 5: Excessive abstraction (many single-method interfaces/classes)
     this.detectExcessiveAbstraction(units, results);
 
+    // Analysis 6: Single-implementation abstractions
+    this.detectSingleImplAbstractions(units, results);
+
     return results;
   }
 
@@ -268,6 +271,105 @@ export class OverEngineeringDetector implements V4Detector {
           },
         });
       }
+    }
+  }
+
+  /**
+   * Detect abstract classes and interfaces with only one implementation.
+   * This is a common AI over-engineering pattern: creating unnecessary abstractions.
+   */
+  private detectSingleImplAbstractions(
+    units: CodeUnit[],
+    results: DetectorResult[],
+  ): void {
+    const LANGUAGES_WITH_CLASSES = new Set(['typescript', 'javascript', 'java', 'kotlin']);
+
+    // Collect all units per file, filter by supported languages
+    const fileUnits = units.filter(u =>
+      u.kind === 'file' && LANGUAGES_WITH_CLASSES.has(u.language),
+    );
+
+    if (fileUnits.length === 0) return;
+
+    // Collect abstract classes and interfaces
+    const abstractNames = new Set<string>();
+    // Map: abstract name → [{implName, file, line}]
+    const implementations = new Map<string, Array<{ implName: string; file: string; line: number }>>();
+    // Map: abstract name → {file, line}
+    const definitions = new Map<string, { file: string; line: number }>();
+
+    for (const unit of fileUnits) {
+      const source = unit.source;
+      if (!source) continue;
+
+      // Find abstract class definitions
+      const abstractClassRegex = /abstract\s+class\s+(\w+)/g;
+      let match: RegExpExecArray | null;
+      while ((match = abstractClassRegex.exec(source)) !== null) {
+        const name = match[1];
+        abstractNames.add(name);
+        const line = source.substring(0, match.index).split('\n').length - 1;
+        definitions.set(name, { file: unit.file, line });
+      }
+
+      // Find interface definitions
+      const interfaceRegex = /interface\s+(\w+)/g;
+      while ((match = interfaceRegex.exec(source)) !== null) {
+        const name = match[1];
+        abstractNames.add(name);
+        const line = source.substring(0, match.index).split('\n').length - 1;
+        definitions.set(name, { file: unit.file, line });
+      }
+
+      // Find extends relationships
+      const extendsRegex = /class\s+(\w+)\s+extends\s+(\w+)/g;
+      while ((match = extendsRegex.exec(source)) !== null) {
+        const implName = match[1];
+        const parentName = match[2];
+        if (!implementations.has(parentName)) {
+          implementations.set(parentName, []);
+        }
+        const line = source.substring(0, match.index).split('\n').length - 1;
+        implementations.get(parentName)!.push({ implName, file: unit.file, line });
+      }
+
+      // Find implements relationships
+      const implementsRegex = /class\s+(\w+)\s+implements\s+(\w+)/g;
+      while ((match = implementsRegex.exec(source)) !== null) {
+        const implName = match[1];
+        const ifaceName = match[2];
+        if (!implementations.has(ifaceName)) {
+          implementations.set(ifaceName, []);
+        }
+        const line = source.substring(0, match.index).split('\n').length - 1;
+        implementations.get(ifaceName)!.push({ implName, file: unit.file, line });
+      }
+    }
+
+    // Flag abstractions with exactly one implementation
+    for (const name of abstractNames) {
+      const impls = implementations.get(name);
+      if (!impls || impls.length !== 1) continue;
+
+      const def = definitions.get(name);
+      const impl = impls[0];
+
+      results.push({
+        detectorId: this.id,
+        severity: 'warning',
+        category: this.category,
+        messageKey: 'over-engineering.single-impl-abstraction',
+        message: `Abstract class/interface '${name}' has only one implementation '${impl.implName}'. Consider simplifying by inlining the implementation.`,
+        file: def?.file || impl.file,
+        line: (def?.line ?? impl.line) + 1,
+        confidence: 0.7,
+        metadata: {
+          abstractName: name,
+          implementationName: impl.implName,
+          implementationFile: impl.file,
+          analysisType: 'single-impl-abstraction',
+        },
+      });
     }
   }
 

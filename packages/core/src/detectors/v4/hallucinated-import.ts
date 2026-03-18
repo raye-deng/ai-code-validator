@@ -51,12 +51,12 @@ export class HallucinatedImportDetector implements V4Detector {
   readonly supportedLanguages: SupportedLanguage[] = []; // All languages
 
   async detect(units: CodeUnit[], context: DetectorContext): Promise<DetectorResult[]> {
-    // If no registry manager is provided (offline mode), skip detection
-    if (!context.registryManager) {
-      return [];
-    }
-
     const results: DetectorResult[] = [];
+
+    // If no registry manager is provided (offline mode), fall back to whitelist-based detection
+    if (!context.registryManager) {
+      return this.detectWithoutRegistry(units, context, results);
+    }
 
     // Group imports by language, deduplicating by package name
     const importsByLanguage = this.groupImportsByLanguage(units);
@@ -111,6 +111,80 @@ export class HallucinatedImportDetector implements V4Detector {
     }
 
     return results;
+  }
+
+  /**
+   * Fallback detection when no registry manager is available (offline mode).
+   * Flags non-relative, non-builtin, non-project imports as potentially hallucinated.
+   */
+  private detectWithoutRegistry(
+    units: CodeUnit[],
+    context: DetectorContext,
+    results: DetectorResult[],
+  ): DetectorResult[] {
+    const projectDeps = context.projectDependencies
+      ? new Set(context.projectDependencies)
+      : null;
+
+    for (const unit of units) {
+      if (unit.kind !== 'file') continue;
+
+      const builtins = BUILTIN_SETS[unit.language];
+      if (!builtins) continue;
+
+      for (const imp of unit.imports) {
+        // Skip relative imports
+        if (imp.isRelative) continue;
+
+        const packageName = this.extractPackageName(imp.module, unit.language);
+
+        // Skip builtins
+        if (this.isBuiltin(packageName, unit.language, builtins)) continue;
+
+        // Skip project dependencies
+        if (projectDeps && this.matchesProjectDep(packageName, projectDeps)) continue;
+
+        results.push({
+          detectorId: this.id,
+          severity: 'warning',
+          category: this.category,
+          messageKey: 'hallucinated-import.potential-hallucination-offline',
+          message: `Import "${packageName}" is not a known built-in or project dependency and could not be verified against the ${this.getRegistryName(unit.language)} registry (offline mode). This may be a hallucinated package name.`,
+          file: unit.file,
+          line: imp.line + 1,
+          confidence: 0.6,
+          metadata: {
+            packageName,
+            language: unit.language,
+            registry: this.getRegistryName(unit.language),
+            raw: imp.raw,
+            offline: true,
+          },
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Check if a package name matches any project dependency.
+   * Supports both exact match and top-level prefix match (e.g., "lodash" matches "lodash/fp").
+   */
+  private matchesProjectDep(packageName: string, projectDeps: Set<string>): boolean {
+    if (projectDeps.has(packageName)) return true;
+    // For npm scoped/regular packages, check if the import is a subpath of a known dep
+    const topLevel = packageName.split('/')[0];
+    if (topLevel !== packageName && projectDeps.has(topLevel)) return true;
+    // For scoped packages, check top-level scope/name
+    if (packageName.startsWith('@')) {
+      const parts = packageName.split('/');
+      if (parts.length >= 2) {
+        const scopeName = `${parts[0]}/${parts[1]}`;
+        if (projectDeps.has(scopeName) && scopeName !== packageName) return true;
+      }
+    }
+    return false;
   }
 
   /**

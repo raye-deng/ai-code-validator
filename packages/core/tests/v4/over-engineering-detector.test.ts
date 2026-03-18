@@ -33,6 +33,18 @@ function makeFuncUnit(overrides: Partial<CodeUnit> & { complexity?: Partial<Comp
   });
 }
 
+function makeFileUnit(overrides: Partial<CodeUnit> & { file?: string; language?: CodeUnit['language'] }): CodeUnit {
+  return createCodeUnit({
+    id: `file:${overrides.file || 'test.ts'}`,
+    file: overrides.file || 'test.ts',
+    language: overrides.language || 'typescript',
+    kind: 'file',
+    location: { startLine: 0, startColumn: 0, endLine: 100, endColumn: 0 },
+    source: '',
+    ...overrides,
+  });
+}
+
 function createContext(config?: Record<string, unknown>): DetectorContext {
   return {
     projectRoot: '/project',
@@ -218,5 +230,141 @@ describe('OverEngineeringDetector', () => {
       ['excessive-params', 'deep-nesting', 'long-function', 'high-complexity'].includes(r.metadata?.analysisType as string),
     );
     expect(codeResults).toHaveLength(0);
+  });
+});
+
+// ─── Single implementation abstraction ─────────────────────────────
+
+describe('OverEngineeringDetector - single implementation abstraction', () => {
+  const detector = new OverEngineeringDetector();
+
+  it('should detect abstract class with only one implementation', async () => {
+    const source = [
+      'abstract class Animal {',
+      '  abstract speak(): string;',
+      '}',
+      'class Dog extends Animal {',
+      '  speak() { return "Woof"; }',
+      '}',
+    ].join('\n');
+
+    const unit = makeFileUnit({
+      kind: 'file',
+      source,
+      imports: [],
+      definitions: [],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    const singleImpl = results.find(r => r.metadata?.analysisType === 'single-impl-abstraction');
+    expect(singleImpl).toBeDefined();
+    expect(singleImpl!.message).toContain('Animal');
+    expect(singleImpl!.message).toContain('Dog');
+    expect(singleImpl!.confidence).toBe(0.7);
+    expect(singleImpl!.severity).toBe('warning');
+  });
+
+  it('should detect interface with only one implementation', async () => {
+    const source = [
+      'interface Logger {',
+      '  log(msg: string): void;',
+      '}',
+      'class ConsoleLogger implements Logger {',
+      '  log(msg: string) { console.log(msg); }',
+      '}',
+    ].join('\n');
+
+    const unit = makeFileUnit({
+      kind: 'file',
+      source,
+      imports: [],
+      definitions: [],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    const singleImpl = results.find(r => r.metadata?.analysisType === 'single-impl-abstraction');
+    expect(singleImpl).toBeDefined();
+    expect(singleImpl!.message).toContain('Logger');
+    expect(singleImpl!.message).toContain('ConsoleLogger');
+  });
+
+  it('should not flag abstract class with multiple implementations', async () => {
+    const source = [
+      'abstract class Shape {',
+      '  abstract area(): number;',
+      '}',
+      'class Circle extends Shape {',
+      '  area() { return 3.14; }',
+      '}',
+      'class Square extends Shape {',
+      '  area() { return 4; }',
+      '}',
+    ].join('\n');
+
+    const unit = makeFileUnit({
+      kind: 'file',
+      source,
+      imports: [],
+      definitions: [],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    const singleImpl = results.filter(r => r.metadata?.analysisType === 'single-impl-abstraction');
+    expect(singleImpl).toHaveLength(0);
+  });
+
+  it('should not flag abstract class with zero implementations', async () => {
+    const source = [
+      'abstract class BaseHandler {',
+      '  abstract handle(): void;',
+      '}',
+    ].join('\n');
+
+    const unit = makeFileUnit({
+      kind: 'file',
+      source,
+      imports: [],
+      definitions: [],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    const singleImpl = results.filter(r => r.metadata?.analysisType === 'single-impl-abstraction');
+    expect(singleImpl).toHaveLength(0);
+  });
+
+  it('should work across multiple files', async () => {
+    const source1 = [
+      'interface Repository<T> {',
+      '  findById(id: string): T | null;',
+      '}',
+    ].join('\n');
+
+    const source2 = [
+      'class UserRepository implements Repository<User> {',
+      '  findById(id: string) { return null; }',
+      '}',
+    ].join('\n');
+
+    const unit1 = makeFileUnit({
+      file: 'repository.ts',
+      kind: 'file',
+      source: source1,
+      imports: [],
+      definitions: [],
+    });
+
+    const unit2 = makeFileUnit({
+      file: 'user-repository.ts',
+      kind: 'file',
+      source: source2,
+      imports: [],
+      definitions: [],
+    });
+
+    const results = await detector.detect([unit1, unit2], createContext());
+    const singleImpl = results.find(r => r.metadata?.analysisType === 'single-impl-abstraction');
+    expect(singleImpl).toBeDefined();
+    expect(singleImpl!.message).toContain('Repository');
+    expect(singleImpl!.message).toContain('UserRepository');
   });
 });

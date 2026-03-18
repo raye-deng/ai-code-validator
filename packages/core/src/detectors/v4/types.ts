@@ -63,6 +63,8 @@ export interface DetectorContext {
   registryManager?: RegistryManager;
   /** Configuration overrides */
   config?: Record<string, unknown>;
+  /** Project dependencies from package.json (used for offline fallback) */
+  projectDependencies?: string[];
 }
 
 // ─── V4 Detector Interface ─────────────────────────────────────────

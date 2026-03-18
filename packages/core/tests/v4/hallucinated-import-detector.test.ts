@@ -162,7 +162,7 @@ describe('HallucinatedImportDetector', () => {
     expect(results.some(r => r.message.includes('fake_py_pkg'))).toBe(true);
   });
 
-  it('should return empty when no registry manager (offline mode)', async () => {
+  it('should flag imports in offline mode (no registry manager)', async () => {
     const unit = makeFileUnit({
       imports: [
         { module: 'some-pkg', symbols: ['fn'], line: 0, isRelative: false, raw: "import { fn } from 'some-pkg'" },
@@ -170,7 +170,9 @@ describe('HallucinatedImportDetector', () => {
     });
 
     const results = await detector.detect([unit], createContext()); // No registryManager
-    expect(results).toHaveLength(0);
+    // Fallback detection should flag non-builtin, non-relative imports
+    expect(results).toHaveLength(1);
+    expect(results[0].confidence).toBe(0.6);
   });
 
   it('should have correct severity and category in results', async () => {
@@ -395,5 +397,100 @@ describe('HallucinatedImportDetector', () => {
     expect(results).toHaveLength(1);
     expect(results[0].metadata?.registry).toBe('PyPI');
     expect(results[0].metadata?.language).toBe('python');
+  });
+});
+
+// ─── Fallback detection (no registry) ─────────────────────────────
+
+describe('HallucinatedImportDetector - fallback detection (no registry)', () => {
+  const detector = new HallucinatedImportDetector();
+
+  it('should detect non-relative, non-builtin imports as potentially hallucinated when no registry', async () => {
+    const unit = makeFileUnit({
+      imports: [
+        { module: 'some-unknown-pkg', symbols: ['fn'], line: 0, isRelative: false, raw: "import { fn } from 'some-unknown-pkg'" },
+      ],
+    });
+
+    const results = await detector.detect([unit], createContext()); // No registryManager
+    expect(results).toHaveLength(1);
+    expect(results[0].detectorId).toBe('hallucinated-import');
+    expect(results[0].severity).toBe('warning');
+    expect(results[0].confidence).toBe(0.6);
+    expect(results[0].message).toContain('some-unknown-pkg');
+    expect(results[0].metadata?.offline).toBe(true);
+  });
+
+  it('should not flag relative imports', async () => {
+    const unit = makeFileUnit({
+      imports: [
+        { module: './utils', symbols: ['helper'], line: 0, isRelative: true, raw: "import { helper } from './utils'" },
+        { module: '../config', symbols: ['cfg'], line: 1, isRelative: true, raw: "import { cfg } from '../config'" },
+      ],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    expect(results).toHaveLength(0);
+  });
+
+  it('should not flag builtin modules', async () => {
+    const unit = makeFileUnit({
+      imports: [
+        { module: 'fs', symbols: ['readFile'], line: 0, isRelative: false, raw: "import { readFile } from 'fs'" },
+        { module: 'path', symbols: ['join'], line: 1, isRelative: false, raw: "import { join } from 'path'" },
+      ],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    expect(results).toHaveLength(0);
+  });
+
+  it('should not flag imports present in projectDependencies', async () => {
+    const unit = makeFileUnit({
+      imports: [
+        { module: 'lodash', symbols: ['map'], line: 0, isRelative: false, raw: "import { map } from 'lodash'" },
+        { module: 'express', symbols: [], line: 1, isRelative: false, raw: "import express from 'express'" },
+        { module: 'unknown-pkg', symbols: ['fn'], line: 2, isRelative: false, raw: "import { fn } from 'unknown-pkg'" },
+      ],
+    });
+
+    const context: DetectorContext = {
+      projectRoot: '/project',
+      allFiles: ['test.ts'],
+      projectDependencies: ['lodash', 'express'],
+    };
+
+    const results = await detector.detect([unit], context);
+    expect(results).toHaveLength(1);
+    expect(results[0].metadata?.packageName).toBe('unknown-pkg');
+  });
+
+  it('should use lower confidence (0.6) for fallback results', async () => {
+    const unit = makeFileUnit({
+      imports: [
+        { module: 'some-pkg', symbols: ['fn'], line: 0, isRelative: false, raw: "import { fn } from 'some-pkg'" },
+      ],
+    });
+
+    const results = await detector.detect([unit], createContext());
+    expect(results).toHaveLength(1);
+    expect(results[0].confidence).toBe(0.6);
+  });
+
+  it('should match subpath imports against projectDependencies', async () => {
+    const unit = makeFileUnit({
+      imports: [
+        { module: 'lodash/fp', symbols: ['flow'], line: 0, isRelative: false, raw: "import { flow } from 'lodash/fp'" },
+      ],
+    });
+
+    const context: DetectorContext = {
+      projectRoot: '/project',
+      allFiles: ['test.ts'],
+      projectDependencies: ['lodash'],
+    };
+
+    const results = await detector.detect([unit], context);
+    expect(results).toHaveLength(0);
   });
 });
