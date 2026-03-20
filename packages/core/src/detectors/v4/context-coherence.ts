@@ -40,6 +40,12 @@ export class ContextCoherenceDetector implements V4Detector {
     // Analysis 4: Referenced but undefined symbols (cross-unit)
     this.detectUndefinedReferences(units, results);
 
+    // Analysis 5: Cross-file type/enum inconsistencies
+    this.detectCrossFileTypeInconsistencies(units, results);
+
+    // Analysis 6: Cross-file function call signature mismatches
+    this.detectCallSignatureMismatches(units, results);
+
     return results;
   }
 
@@ -334,6 +340,285 @@ export class ContextCoherenceDetector implements V4Detector {
     };
 
     return globals[language]?.has(name) ?? false;
+  }
+
+  /**
+   * Analysis 5: Detect cross-file type and enum inconsistencies.
+   *
+   * AI models generating multi-file projects often produce inconsistent
+   * type definitions: enum members with wrong casing, interface properties
+   * that mismatch between definition and usage, or conflicting type names.
+   *
+   * Detections:
+   * - Same type/interface/enum name defined differently in multiple files
+   * - Enum member access that doesn't match the defined enum values
+   * - Interface/type with same name but different property sets
+   */
+  private detectCrossFileTypeInconsistencies(
+    units: CodeUnit[],
+    results: DetectorResult[],
+  ): void {
+    // Collect type/interface/enum definitions across all files
+    const typeDefsByName = new Map<string, Array<{
+      file: string;
+      line: number;
+      kind: string;
+      source: string;
+      properties: string[];
+    }>>();
+
+    for (const unit of units) {
+      if (unit.kind !== 'file') continue;
+      if (!unit.source) continue;
+
+      // Extract enum definitions with their members
+      const enumRegex = /enum\s+(\w+)\s*\{([^}]*)\}/g;
+      let match: RegExpExecArray | null;
+      while ((match = enumRegex.exec(unit.source)) !== null) {
+        const name = match[1];
+        const body = match[2];
+        const members = body.split(',')
+          .map(m => m.trim().split(/[=\s]/)[0])
+          .filter(m => m.length > 0);
+
+        if (!typeDefsByName.has(name)) typeDefsByName.set(name, []);
+        const line = unit.source.substring(0, match.index).split('\n').length - 1;
+        typeDefsByName.get(name)!.push({
+          file: unit.file,
+          line,
+          kind: 'enum',
+          source: match[0],
+          properties: members,
+        });
+      }
+
+      // Extract interface definitions with their property names
+      const interfaceRegex = /interface\s+(\w+)\s*(?:extends\s+\w+\s*)?\{([^}]*)\}/g;
+      while ((match = interfaceRegex.exec(unit.source)) !== null) {
+        const name = match[1];
+        const body = match[2];
+        const props = body.split(/[;\n]/)
+          .map(line => {
+            const propMatch = line.trim().match(/^(\w+)\s*[?:]/)
+            return propMatch ? propMatch[1] : null;
+          })
+          .filter((p): p is string => p !== null);
+
+        if (!typeDefsByName.has(name)) typeDefsByName.set(name, []);
+        const line = unit.source.substring(0, match.index).split('\n').length - 1;
+        typeDefsByName.get(name)!.push({
+          file: unit.file,
+          line,
+          kind: 'interface',
+          source: match[0],
+          properties: props,
+        });
+      }
+
+      // Extract type alias definitions
+      const typeRegex = /type\s+(\w+)\s*=\s*\{([^}]*)\}/g;
+      while ((match = typeRegex.exec(unit.source)) !== null) {
+        const name = match[1];
+        const body = match[2];
+        const props = body.split(/[;\n]/)
+          .map(line => {
+            const propMatch = line.trim().match(/^(\w+)\s*[?:]/);
+            return propMatch ? propMatch[1] : null;
+          })
+          .filter((p): p is string => p !== null);
+
+        if (!typeDefsByName.has(name)) typeDefsByName.set(name, []);
+        const line = unit.source.substring(0, match.index).split('\n').length - 1;
+        typeDefsByName.get(name)!.push({
+          file: unit.file,
+          line,
+          kind: 'type',
+          source: match[0],
+          properties: props,
+        });
+      }
+    }
+
+    // Detect conflicts: same name defined in multiple files with different properties
+    for (const [name, defs] of typeDefsByName) {
+      if (defs.length < 2) continue;
+
+      // Group by file to only compare cross-file
+      const byFile = new Map<string, typeof defs[0]>();
+      for (const def of defs) {
+        if (!byFile.has(def.file)) {
+          byFile.set(def.file, def);
+        }
+      }
+      if (byFile.size < 2) continue;
+
+      const defList = [...byFile.values()];
+      const baseline = defList[0];
+
+      for (let i = 1; i < defList.length; i++) {
+        const other = defList[i];
+
+        // Compare properties
+        const baselineProps = new Set(baseline.properties);
+        const otherProps = new Set(other.properties);
+
+        const missingInOther = baseline.properties.filter(p => !otherProps.has(p));
+        const extraInOther = other.properties.filter(p => !baselineProps.has(p));
+
+        if (missingInOther.length > 0 || extraInOther.length > 0) {
+          const details: string[] = [];
+          if (missingInOther.length > 0) {
+            details.push(`missing: ${missingInOther.join(', ')}`);
+          }
+          if (extraInOther.length > 0) {
+            details.push(`extra: ${extraInOther.join(', ')}`);
+          }
+
+          results.push({
+            detectorId: this.id,
+            severity: 'warning',
+            category: this.category,
+            messageKey: 'context-coherence.cross-file-type-mismatch',
+            message: `${this.capitalizeKind(other.kind)} "${name}" is defined in both "${baseline.file}" and "${other.file}" with different members (${details.join('; ')}). AI may have generated inconsistent definitions across files.`,
+            file: other.file,
+            line: other.line + 1,
+            confidence: 0.8,
+            metadata: {
+              typeName: name,
+              typeKind: other.kind,
+              baselineFile: baseline.file,
+              conflictFile: other.file,
+              missingMembers: missingInOther,
+              extraMembers: extraInOther,
+              analysisType: 'cross-file-type-mismatch',
+            },
+          });
+        }
+      }
+    }
+
+    // Detect enum member access that doesn't match defined values
+    for (const unit of units) {
+      if (!unit.source) continue;
+
+      for (const [enumName, defs] of typeDefsByName) {
+        const enumDefs = defs.filter(d => d.kind === 'enum');
+        if (enumDefs.length === 0) continue;
+
+        // Collect all known enum members across all definitions
+        const allMembers = new Set<string>();
+        for (const def of enumDefs) {
+          for (const m of def.properties) allMembers.add(m);
+        }
+
+        // Find enum member accesses: EnumName.MemberName
+        const accessRegex = new RegExp(`\\b${enumName}\\.(\\w+)\\b`, 'g');
+        let accessMatch: RegExpExecArray | null;
+        while ((accessMatch = accessRegex.exec(unit.source)) !== null) {
+          const memberName = accessMatch[1];
+          if (!allMembers.has(memberName)) {
+            const line = unit.source.substring(0, accessMatch.index).split('\n').length - 1;
+            const absoluteLine = unit.kind === 'file' ? line : unit.location.startLine + line;
+
+            results.push({
+              detectorId: this.id,
+              severity: 'error',
+              category: this.category,
+              messageKey: 'context-coherence.invalid-enum-member',
+              message: `"${enumName}.${memberName}" references a non-existent enum member. Known members: ${[...allMembers].join(', ')}. AI may have used incorrect casing or a fabricated value.`,
+              file: unit.file,
+              line: absoluteLine + 1,
+              confidence: 0.85,
+              metadata: {
+                enumName,
+                invalidMember: memberName,
+                validMembers: [...allMembers],
+                analysisType: 'invalid-enum-member',
+              },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Analysis 6: Detect cross-file function call signature mismatches.
+   *
+   * When AI generates multi-file code, it sometimes defines a function
+   * with N parameters but calls it with a different number elsewhere.
+   * This detects argument count mismatches across file boundaries.
+   */
+  private detectCallSignatureMismatches(
+    units: CodeUnit[],
+    results: DetectorResult[],
+  ): void {
+    // Collect function definitions with their parameter counts
+    const funcDefs = new Map<string, Array<{
+      file: string;
+      line: number;
+      paramCount: number;
+      exported: boolean;
+    }>>();
+
+    for (const unit of units) {
+      for (const def of unit.definitions) {
+        if (def.kind !== 'function' && def.kind !== 'method') continue;
+        if (!def.exported) continue; // Only check exported functions (cross-file relevant)
+
+        if (!funcDefs.has(def.name)) funcDefs.set(def.name, []);
+
+        // Get parameter count from the unit's complexity metrics
+        const paramCount = unit.kind === 'function' || unit.kind === 'method'
+          ? (unit.complexity.parameterCount ?? -1)
+          : -1;
+
+        if (paramCount >= 0) {
+          funcDefs.get(def.name)!.push({
+            file: unit.file,
+            line: def.line,
+            paramCount,
+            exported: def.exported,
+          });
+        }
+      }
+    }
+
+    // Check all call sites against known definitions
+    for (const unit of units) {
+      for (const call of unit.calls) {
+        const defs = funcDefs.get(call.method);
+        if (!defs || defs.length === 0) continue;
+
+        // Only flag cross-file calls
+        const crossFileDefs = defs.filter(d => d.file !== unit.file);
+        if (crossFileDefs.length === 0) continue;
+
+        for (const def of crossFileDefs) {
+          // Allow some flexibility: flag if arg count differs by more than reasonable defaults
+          // (Functions may have optional params, so only flag clearly wrong cases)
+          if (call.argCount > def.paramCount + 1 || call.argCount < def.paramCount - 2) {
+            results.push({
+              detectorId: this.id,
+              severity: 'warning',
+              category: this.category,
+              messageKey: 'context-coherence.call-signature-mismatch',
+              message: `Function "${call.method}" is defined with ${def.paramCount} parameter(s) in "${def.file}" but called with ${call.argCount} argument(s) here. AI may have lost track of the function signature across files.`,
+              file: unit.file,
+              line: call.line + 1,
+              confidence: 0.75,
+              metadata: {
+                functionName: call.method,
+                definedParams: def.paramCount,
+                calledArgs: call.argCount,
+                definitionFile: def.file,
+                analysisType: 'call-signature-mismatch',
+              },
+            });
+          }
+        }
+      }
+    }
   }
 
   /**

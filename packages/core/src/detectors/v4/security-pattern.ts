@@ -39,6 +39,8 @@ export interface SecurityPattern {
   languages: SupportedLanguage[];
   /** Additional context patterns that should NOT be present to trigger this finding */
   excludeContextPatterns?: RegExp[];
+  /** Whether this pattern should scan comment lines (default: false). Used for TODO/FIXME security bypass patterns. */
+  scanComments?: boolean;
 }
 
 // ─── Security Patterns ─────────────────────────────────────────────
@@ -287,6 +289,67 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
     excludeContextPatterns: [/zod|joi|yup|ajv|schema|validate|parseBody|safeParse/i],
   },
 
+  // ── TODO/FIXME Security Bypass ──────────────────────────────────
+  // AI commonly generates placeholder comments where security checks
+  // should be, then never implements them. These are invisible to
+  // traditional scanners because the code "works" — it just has no
+  // security.
+
+  {
+    id: 'todo-auth-bypass',
+    pattern: /\/\/\s*(?:TODO|FIXME|HACK|XXX)\s*:?\s*.*?(?:auth|authenti|authoriz|permission|access.?control|rbac|acl|login.?check)/i,
+    severity: 'error',
+    confidence: 0.85,
+    message: 'TODO/FIXME comment indicates missing authentication or authorization check. AI generated a placeholder instead of implementing the security logic.',
+    languages: [],
+    scanComments: true,
+  },
+  {
+    id: 'todo-validation-bypass',
+    pattern: /\/\/\s*(?:TODO|FIXME|HACK|XXX)\s*:?\s*.*?(?:validat|sanitiz|escape|input.?check|verify.?input|check.?input)/i,
+    severity: 'warning',
+    confidence: 0.8,
+    message: 'TODO/FIXME comment indicates missing input validation or sanitization. AI left a placeholder instead of implementing proper validation.',
+    languages: [],
+    scanComments: true,
+  },
+  {
+    id: 'todo-encryption-bypass',
+    pattern: /\/\/\s*(?:TODO|FIXME|HACK|XXX)\s*:?\s*.*?(?:encrypt|decrypt|hash|sign|verify.?signature|tls|ssl|cert)/i,
+    severity: 'error',
+    confidence: 0.8,
+    message: 'TODO/FIXME comment indicates missing encryption or cryptographic operation. AI skipped implementing the security-critical logic.',
+    languages: [],
+    scanComments: true,
+  },
+  {
+    id: 'todo-rate-limit-bypass',
+    pattern: /\/\/\s*(?:TODO|FIXME|HACK|XXX)\s*:?\s*.*?(?:rate.?limit|throttl|brute.?force|dos|ddos)/i,
+    severity: 'warning',
+    confidence: 0.75,
+    message: 'TODO/FIXME comment indicates missing rate limiting or abuse prevention. AI left a placeholder instead of implementing the protection.',
+    languages: [],
+    scanComments: true,
+  },
+  {
+    id: 'todo-security-generic',
+    pattern: /\/\/\s*(?:TODO|FIXME|HACK|XXX)\s*:?\s*.*?(?:security|secure|protect|csrf|xss|injection|vulnerab)/i,
+    severity: 'warning',
+    confidence: 0.75,
+    message: 'TODO/FIXME comment references a security concern that was not implemented. AI acknowledged the risk but did not address it.',
+    languages: [],
+    scanComments: true,
+  },
+  {
+    id: 'python-todo-security',
+    pattern: /#\s*(?:TODO|FIXME|HACK|XXX)\s*:?\s*.*?(?:auth|validat|sanitiz|encrypt|security|permission|rate.?limit)/i,
+    severity: 'warning',
+    confidence: 0.75,
+    message: 'TODO/FIXME comment references a security concern that was not implemented. AI acknowledged the risk but did not address it.',
+    languages: ['python'],
+    scanComments: true,
+  },
+
   // ── Go-specific Security Patterns ──────────────────────────────
 
   {
@@ -407,15 +470,19 @@ export class SecurityPatternDetector implements V4Detector {
 
       const lines = unit.source.split('\n');
 
+      // Separate patterns that scan comments from those that don't
+      const codePatterns = applicablePatterns.filter(p => !p.scanComments);
+      const commentPatterns = applicablePatterns.filter(p => p.scanComments);
+
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        // Skip comments (simple heuristic)
         const trimmed = line.trim();
-        if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('*')) {
-          continue;
-        }
+        const isComment = trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('*');
 
-        for (const pattern of applicablePatterns) {
+        // Pick which patterns to run based on whether this is a comment line
+        const patternsToRun = isComment ? commentPatterns : [...codePatterns, ...commentPatterns];
+
+        for (const pattern of patternsToRun) {
           // Reset regex lastIndex (patterns might be reused)
           pattern.pattern.lastIndex = 0;
 

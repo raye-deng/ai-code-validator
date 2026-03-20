@@ -448,4 +448,89 @@ function generateCacheKey(data: string): string {
     const parseResult = results.find(r => r.metadata?.patternId === 'unsafe-json-parse-user-input');
     expect(parseResult).toBeUndefined();
   });
+
+  // ── TODO/FIXME Security Bypass ────────────────────────────────
+
+  it('should detect TODO auth bypass comment', async () => {
+    const unit = makeUnit(`
+function handleRequest(req: Request) {
+  // TODO: add authentication check here
+  return db.getData(req.params.id);
+}
+    `.trim());
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-auth-bypass');
+    expect(todoResult).toBeDefined();
+    expect(todoResult!.severity).toBe('error');
+    expect(todoResult!.message).toContain('authentication');
+  });
+
+  it('should detect FIXME authorization bypass', async () => {
+    const unit = makeUnit('  // FIXME: implement authorization before production');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-auth-bypass');
+    expect(todoResult).toBeDefined();
+  });
+
+  it('should detect TODO validation bypass', async () => {
+    const unit = makeUnit('  // TODO validate user input before processing');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-validation-bypass');
+    expect(todoResult).toBeDefined();
+    expect(todoResult!.severity).toBe('warning');
+  });
+
+  it('should detect TODO sanitization bypass', async () => {
+    const unit = makeUnit('  // TODO: sanitize HTML input to prevent XSS');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-validation-bypass');
+    expect(todoResult).toBeDefined();
+  });
+
+  it('should detect TODO encryption bypass', async () => {
+    const unit = makeUnit('  // TODO: encrypt sensitive data before storing');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-encryption-bypass');
+    expect(todoResult).toBeDefined();
+    expect(todoResult!.severity).toBe('error');
+  });
+
+  it('should detect TODO rate limiting bypass', async () => {
+    const unit = makeUnit('  // FIXME: add rate limiting to prevent brute force');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-rate-limit-bypass');
+    expect(todoResult).toBeDefined();
+  });
+
+  it('should detect generic TODO security concern', async () => {
+    const unit = makeUnit('  // TODO: fix CSRF vulnerability');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'todo-security-generic');
+    expect(todoResult).toBeDefined();
+  });
+
+  it('should detect Python TODO security comment', async () => {
+    const unit = makeUnit('  # TODO: add authentication middleware', 'python', 'app.py');
+    const results = await detector.detect([unit], createContext());
+    const todoResult = results.find(r => r.metadata?.patternId === 'python-todo-security');
+    expect(todoResult).toBeDefined();
+  });
+
+  it('should not flag non-security TODO comments', async () => {
+    const unit = makeUnit('  // TODO: refactor this function for readability');
+    const results = await detector.detect([unit], createContext());
+    const todoResults = results.filter(r =>
+      (r.metadata?.patternId as string)?.startsWith('todo-'),
+    );
+    expect(todoResults).toHaveLength(0);
+  });
+
+  it('should not flag HACK/XXX in non-security context', async () => {
+    const unit = makeUnit('  // HACK: workaround for broken CSS layout');
+    const results = await detector.detect([unit], createContext());
+    const todoResults = results.filter(r =>
+      (r.metadata?.patternId as string)?.startsWith('todo-'),
+    );
+    expect(todoResults).toHaveLength(0);
+  });
 });

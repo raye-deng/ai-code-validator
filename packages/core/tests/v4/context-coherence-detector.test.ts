@@ -266,6 +266,141 @@ describe('ContextCoherenceDetector', () => {
     expect(undefined_).toHaveLength(0);
   });
 
+  // ── Analysis 5: Cross-file type inconsistencies ─────────────────
+
+  it('should detect cross-file enum definition mismatch', async () => {
+    const fileA = makeFileUnit({
+      file: 'types.ts',
+      source: `enum Status { Active, Inactive, Pending }`,
+    });
+    const fileB = makeFileUnit({
+      file: 'models.ts',
+      source: `enum Status { Active, Inactive }`,
+    });
+
+    const results = await detector.detect([fileA, fileB], createContext());
+    const mismatch = results.find(r => r.metadata?.analysisType === 'cross-file-type-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch!.severity).toBe('warning');
+    expect(mismatch!.message).toContain('Status');
+    expect(mismatch!.message).toContain('types.ts');
+    expect(mismatch!.message).toContain('models.ts');
+  });
+
+  it('should detect cross-file interface property mismatch', async () => {
+    const fileA = makeFileUnit({
+      file: 'api.ts',
+      source: `interface User { id: number; name: string; email: string }`,
+    });
+    const fileB = makeFileUnit({
+      file: 'db.ts',
+      source: `interface User { id: number; userName: string }`,
+    });
+
+    const results = await detector.detect([fileA, fileB], createContext());
+    const mismatch = results.find(r => r.metadata?.analysisType === 'cross-file-type-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch!.metadata?.missingMembers).toContain('name');
+  });
+
+  it('should not flag identical cross-file type definitions', async () => {
+    const fileA = makeFileUnit({
+      file: 'types.ts',
+      source: `interface Config { port: number; host: string }`,
+    });
+    const fileB = makeFileUnit({
+      file: 'server.ts',
+      source: `interface Config { port: number; host: string }`,
+    });
+
+    const results = await detector.detect([fileA, fileB], createContext());
+    const mismatch = results.filter(r => r.metadata?.analysisType === 'cross-file-type-mismatch');
+    expect(mismatch).toHaveLength(0);
+  });
+
+  it('should detect invalid enum member access', async () => {
+    const fileA = makeFileUnit({
+      file: 'types.ts',
+      source: `enum Status { Active, Inactive, Pending }`,
+    });
+    const fileB = makeFileUnit({
+      file: 'handler.ts',
+      source: `const s = Status.ACTIVE;`,
+    });
+
+    const results = await detector.detect([fileA, fileB], createContext());
+    const invalid = results.find(r => r.metadata?.analysisType === 'invalid-enum-member');
+    expect(invalid).toBeDefined();
+    expect(invalid!.severity).toBe('error');
+    expect(invalid!.message).toContain('ACTIVE');
+    expect(invalid!.message).toContain('Active');
+  });
+
+  it('should not flag valid enum member access', async () => {
+    const fileA = makeFileUnit({
+      file: 'types.ts',
+      source: `enum Status { Active, Inactive }`,
+    });
+    const fileB = makeFileUnit({
+      file: 'handler.ts',
+      source: `const s = Status.Active;`,
+    });
+
+    const results = await detector.detect([fileA, fileB], createContext());
+    const invalid = results.filter(r => r.metadata?.analysisType === 'invalid-enum-member');
+    expect(invalid).toHaveLength(0);
+  });
+
+  // ── Analysis 6: Cross-file call signature mismatches ───────────
+
+  it('should detect cross-file call with wrong argument count', async () => {
+    const defUnit = makeFuncUnit({
+      name: 'processOrder',
+      file: 'service.ts',
+      definitions: [
+        { name: 'processOrder', kind: 'function', line: 10, exported: true },
+      ],
+    });
+    // Set parameter count via complexity metrics
+    (defUnit as any).complexity = { ...defUnit.complexity, parameterCount: 2 };
+
+    const callUnit = makeFileUnit({
+      file: 'handler.ts',
+      calls: [
+        { callee: 'processOrder', method: 'processOrder', line: 5, argCount: 5 },
+      ],
+    });
+
+    const results = await detector.detect([defUnit, callUnit], createContext());
+    const mismatch = results.find(r => r.metadata?.analysisType === 'call-signature-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch!.severity).toBe('warning');
+    expect(mismatch!.message).toContain('2 parameter');
+    expect(mismatch!.message).toContain('5 argument');
+  });
+
+  it('should not flag cross-file call with matching argument count', async () => {
+    const defUnit = makeFuncUnit({
+      name: 'createUser',
+      file: 'service.ts',
+      definitions: [
+        { name: 'createUser', kind: 'function', line: 10, exported: true },
+      ],
+    });
+    (defUnit as any).complexity = { ...defUnit.complexity, parameterCount: 3 };
+
+    const callUnit = makeFileUnit({
+      file: 'handler.ts',
+      calls: [
+        { callee: 'createUser', method: 'createUser', line: 5, argCount: 3 },
+      ],
+    });
+
+    const results = await detector.detect([defUnit, callUnit], createContext());
+    const mismatch = results.filter(r => r.metadata?.analysisType === 'call-signature-mismatch');
+    expect(mismatch).toHaveLength(0);
+  });
+
   it('should handle Python well-known globals', async () => {
     const fileUnit = makeFileUnit({
       language: 'python',
