@@ -607,23 +607,503 @@ const KOTLIN_DEPRECATIONS: DeprecatedPattern[] = [
   ...JAVA_DEPRECATIONS,
 ];
 
+// ── Popular third-party library deprecated APIs ────────────────────
+// AI models frequently generate code using outdated APIs from popular
+// npm packages. These are the patterns traditional linters miss because
+// they require framework-specific knowledge.
+
+const EXPRESS_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bapp\.del\s*\(/,
+    replacement: 'app.delete()',
+    since: 'Express 5',
+    confidence: 0.9,
+    description: 'app.del() is removed in Express 5. Use app.delete() instead.',
+  },
+  {
+    pattern: /\bres\.json\s*\(\s*\d+\s*,/,
+    replacement: 'res.status(code).json(body)',
+    since: 'Express 5',
+    confidence: 0.85,
+    description: 'res.json(status, body) signature is removed in Express 5. Use res.status(code).json(body).',
+  },
+  {
+    pattern: /\bres\.send\s*\(\s*\d{3}\s*,/,
+    replacement: 'res.status(code).send(body)',
+    since: 'Express 5',
+    confidence: 0.85,
+    description: 'res.send(status, body) signature is removed in Express 5. Use res.status(code).send(body).',
+  },
+  {
+    pattern: /\bres\.sendfile\b/,
+    replacement: 'res.sendFile() (capital F)',
+    since: 'Express 4.8',
+    confidence: 0.9,
+    description: 'res.sendfile() is deprecated. Use res.sendFile() (capital F) instead.',
+  },
+  {
+    pattern: /\brequire\s*\(\s*['"]body-parser['"]\s*\)/,
+    replacement: 'express.json() and express.urlencoded()',
+    since: 'Express 4.16',
+    confidence: 0.85,
+    description: 'body-parser is built into Express since 4.16. Use express.json() and express.urlencoded().',
+  },
+  {
+    pattern: /\bres\.redirect\s*\(\s*['"][^'"]+['"]\s*,\s*\d/,
+    replacement: 'res.redirect(status, url)',
+    since: 'Express 5',
+    confidence: 0.8,
+    description: 'res.redirect(url, status) argument order is reversed in Express 5. Use res.redirect(status, url).',
+  },
+];
+
+const NEXTJS_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bfrom\s+['"]next\/image['"]/,
+    replacement: 'next/image (new component)',
+    since: 'Next.js 13',
+    confidence: 0.3,
+    description: 'next/image was redesigned in Next.js 13. If using the legacy component, migrate to the new API.',
+  },
+  {
+    pattern: /\bfrom\s+['"]next\/legacy\/image['"]/,
+    replacement: 'next/image (new component)',
+    since: 'Next.js 13',
+    confidence: 0.7,
+    description: 'next/legacy/image is a compatibility wrapper. Migrate to the new next/image component.',
+  },
+  {
+    pattern: /\bgetInitialProps\b/,
+    replacement: 'getServerSideProps or getStaticProps (Pages) / server components (App Router)',
+    since: 'Next.js 13',
+    confidence: 0.8,
+    description: 'getInitialProps is discouraged. Use getServerSideProps/getStaticProps or App Router server components.',
+  },
+  {
+    pattern: /\bgetServerSideProps\b/,
+    replacement: 'Server Components (App Router)',
+    since: 'Next.js 13',
+    confidence: 0.3,
+    description: 'getServerSideProps is Pages Router only. In App Router, use server components with direct data fetching.',
+  },
+  {
+    pattern: /\bgetStaticProps\b/,
+    replacement: 'Server Components (App Router) with generateStaticParams',
+    since: 'Next.js 13',
+    confidence: 0.3,
+    description: 'getStaticProps is Pages Router only. In App Router, use server components with generateStaticParams.',
+  },
+  {
+    pattern: /\bfrom\s+['"]next\/router['"]/,
+    replacement: 'next/navigation (App Router)',
+    since: 'Next.js 13',
+    confidence: 0.7,
+    description: 'next/router is for Pages Router. In App Router, use useRouter from next/navigation.',
+  },
+  {
+    pattern: /\bfrom\s+['"]next\/head['"]/,
+    replacement: 'Metadata API (export const metadata) in App Router',
+    since: 'Next.js 13',
+    confidence: 0.7,
+    description: 'next/head is for Pages Router. In App Router, use the Metadata API or generateMetadata.',
+  },
+  {
+    pattern: /\bfrom\s+['"]next\/document['"]/,
+    replacement: 'Root layout (app/layout.tsx) in App Router',
+    since: 'Next.js 13',
+    confidence: 0.7,
+    description: 'next/document is for Pages Router. In App Router, customize HTML structure in the root layout.',
+  },
+];
+
+const PRISMA_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bprisma\.\$on\s*\(\s*['"]beforeExit['"]/,
+    replacement: 'process signal handlers or shutdown hooks',
+    since: 'Prisma 5',
+    confidence: 0.8,
+    description: '$on("beforeExit") behavior changed in Prisma 5. Use process signal handlers for cleanup.',
+  },
+  {
+    pattern: /\bfindUnique\s*\(\s*\{[^}]*where\s*:\s*\{[^}]*\b(?:AND|OR|NOT)\b/i,
+    replacement: 'findFirst() for compound conditions',
+    since: 'Prisma 5',
+    confidence: 0.7,
+    description: 'findUnique does not support compound filters (AND/OR/NOT) in where. Use findFirst() instead.',
+  },
+  {
+    pattern: /\brejectOnNotFound\b/,
+    replacement: 'findUniqueOrThrow() / findFirstOrThrow()',
+    since: 'Prisma 5',
+    confidence: 0.9,
+    description: 'rejectOnNotFound is removed in Prisma 5. Use findUniqueOrThrow() or findFirstOrThrow().',
+  },
+];
+
+const MONGOOSE_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bmongoose\.connect\s*\([^,]+,\s*\{[^}]*useNewUrlParser/,
+    replacement: 'mongoose.connect(uri) (options no longer needed)',
+    since: 'Mongoose 6',
+    confidence: 0.9,
+    description: 'useNewUrlParser option is removed in Mongoose 6+. These options are now always enabled.',
+  },
+  {
+    pattern: /\buseUnifiedTopology\b/,
+    replacement: 'Remove the option (always enabled)',
+    since: 'Mongoose 6',
+    confidence: 0.9,
+    description: 'useUnifiedTopology is removed in Mongoose 6+. The unified topology is always used.',
+  },
+  {
+    pattern: /\buseCreateIndex\b/,
+    replacement: 'Remove the option (always enabled)',
+    since: 'Mongoose 6',
+    confidence: 0.9,
+    description: 'useCreateIndex is removed in Mongoose 6+. createIndex is always used.',
+  },
+  {
+    pattern: /\buseFindAndModify\b/,
+    replacement: 'Remove the option (always disabled)',
+    since: 'Mongoose 6',
+    confidence: 0.9,
+    description: 'useFindAndModify is removed in Mongoose 6+. findOneAndUpdate always uses findAndModify=false.',
+  },
+  {
+    pattern: /\b\.update\s*\(/,
+    replacement: 'updateOne() or updateMany()',
+    since: 'Mongoose 6',
+    confidence: 0.5,
+    description: 'Model.update() is removed in Mongoose 6+. Use updateOne() or updateMany().',
+  },
+  {
+    pattern: /\b\.remove\s*\(/,
+    replacement: 'deleteOne() or deleteMany()',
+    since: 'Mongoose 7',
+    confidence: 0.4,
+    description: 'Model.remove() and doc.remove() are removed in Mongoose 7. Use deleteOne() or deleteMany().',
+  },
+  {
+    pattern: /\b\.count\s*\(/,
+    replacement: 'countDocuments() or estimatedDocumentCount()',
+    since: 'Mongoose 6',
+    confidence: 0.4,
+    description: 'Model.count() is deprecated. Use countDocuments() or estimatedDocumentCount().',
+  },
+];
+
+const WEBPACK_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bmodule\.loaders\b/,
+    replacement: 'module.rules',
+    since: 'Webpack 4',
+    confidence: 0.95,
+    description: 'module.loaders is removed in Webpack 4+. Use module.rules.',
+  },
+  {
+    pattern: /\bnew\s+webpack\.optimize\.CommonsChunkPlugin\b/,
+    replacement: 'optimization.splitChunks',
+    since: 'Webpack 4',
+    confidence: 0.95,
+    description: 'CommonsChunkPlugin is removed in Webpack 4+. Use optimization.splitChunks.',
+  },
+  {
+    pattern: /\bnew\s+webpack\.optimize\.UglifyJsPlugin\b/,
+    replacement: 'optimization.minimizer with TerserPlugin',
+    since: 'Webpack 4',
+    confidence: 0.95,
+    description: 'UglifyJsPlugin is removed in Webpack 4+. Use TerserPlugin via optimization.minimizer.',
+  },
+  {
+    pattern: /\bnew\s+webpack\.optimize\.DedupePlugin\b/,
+    replacement: 'Remove (deduplication is automatic)',
+    since: 'Webpack 4',
+    confidence: 0.95,
+    description: 'DedupePlugin is removed in Webpack 4+. Deduplication is handled automatically.',
+  },
+  {
+    pattern: /\bnew\s+webpack\.NamedModulesPlugin\b/,
+    replacement: 'optimization.moduleIds: "named"',
+    since: 'Webpack 4',
+    confidence: 0.9,
+    description: 'NamedModulesPlugin is removed in Webpack 5. Use optimization.moduleIds: "named".',
+  },
+];
+
+const JEST_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bjest\.fn\(\)\.mockReturnValue\b/,
+    replacement: 'jest.fn().mockReturnValue (verify no deprecated usage)',
+    since: 'Jest 27+',
+    confidence: 0.2,
+    description: 'Ensure using current Jest mock API. Some mock methods were restructured in Jest 27+.',
+  },
+  {
+    pattern: /\bjest\.useFakeTimers\s*\(\s*['"]modern['"]\s*\)/,
+    replacement: 'jest.useFakeTimers() (modern is now the default)',
+    since: 'Jest 27',
+    confidence: 0.8,
+    description: 'jest.useFakeTimers("modern") is redundant since Jest 27. Modern timers are the default.',
+  },
+  {
+    pattern: /\bjest\.useFakeTimers\s*\(\s*['"]legacy['"]\s*\)/,
+    replacement: 'jest.useFakeTimers() (legacy timers are deprecated)',
+    since: 'Jest 27',
+    confidence: 0.85,
+    description: 'Legacy fake timers are deprecated since Jest 27. Use modern timers (now the default).',
+  },
+];
+
+const NESTJS_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\b\@nestjs\/swagger.*?ApiModelProperty\b/,
+    replacement: 'ApiProperty()',
+    since: 'NestJS Swagger 4',
+    confidence: 0.95,
+    description: '@ApiModelProperty() is removed. Use @ApiProperty() decorator instead.',
+  },
+  {
+    pattern: /\bDocumentBuilder.*?\.setHost\b/,
+    replacement: '.addServer()',
+    since: 'NestJS Swagger 4',
+    confidence: 0.9,
+    description: 'DocumentBuilder.setHost() is removed in Swagger 4. Use addServer() for OpenAPI 3.',
+  },
+  {
+    pattern: /\bDocumentBuilder.*?\.setSchemes\b/,
+    replacement: '.addServer()',
+    since: 'NestJS Swagger 4',
+    confidence: 0.9,
+    description: 'DocumentBuilder.setSchemes() is removed in Swagger 4. Use addServer() for OpenAPI 3.',
+  },
+];
+
+const TYPEORM_DEPRECATIONS: DeprecatedPattern[] = [
+  {
+    pattern: /\bgetRepository\s*\(/,
+    replacement: 'dataSource.getRepository() or @InjectRepository()',
+    since: 'TypeORM 0.3',
+    confidence: 0.7,
+    description: 'getRepository() without DataSource context is deprecated in TypeORM 0.3. Use dataSource.getRepository().',
+  },
+  {
+    pattern: /\bgetConnection\s*\(/,
+    replacement: 'DataSource instance',
+    since: 'TypeORM 0.3',
+    confidence: 0.85,
+    description: 'getConnection() is deprecated in TypeORM 0.3. Use a DataSource instance directly.',
+  },
+  {
+    pattern: /\bgetManager\s*\(/,
+    replacement: 'dataSource.manager',
+    since: 'TypeORM 0.3',
+    confidence: 0.85,
+    description: 'getManager() is deprecated in TypeORM 0.3. Use dataSource.manager directly.',
+  },
+  {
+    pattern: /\bgetCustomRepository\s*\(/,
+    replacement: 'Custom repository classes with DataSource',
+    since: 'TypeORM 0.3',
+    confidence: 0.85,
+    description: 'getCustomRepository() is removed in TypeORM 0.3. Use custom repository patterns with DataSource.',
+  },
+  {
+    pattern: /\bnew\s+Connection\b/,
+    replacement: 'new DataSource()',
+    since: 'TypeORM 0.3',
+    confidence: 0.85,
+    description: 'Connection class is renamed to DataSource in TypeORM 0.3.',
+  },
+  {
+    pattern: /\bcreateConnection\s*\(/,
+    replacement: 'new DataSource().initialize()',
+    since: 'TypeORM 0.3',
+    confidence: 0.85,
+    description: 'createConnection() is deprecated in TypeORM 0.3. Use new DataSource().initialize().',
+  },
+];
+
+// ── Python third-party library deprecated APIs ─────────────────────
+
+const PYTHON_THIRDPARTY_DEPRECATIONS: DeprecatedPattern[] = [
+  // Flask
+  {
+    pattern: /\b\@app\.before_request\b/,
+    replacement: '@app.before_request (verify compatibility with Flask 2.3+ changes)',
+    since: 'Flask 2.3',
+    confidence: 0.3,
+    description: 'Flask 2.3 restructured request lifecycle hooks. Verify before_request usage is compatible.',
+  },
+  {
+    pattern: /\bfrom\s+flask\.json\s+import\s+jsonify\b/,
+    replacement: 'from flask import jsonify',
+    since: 'Flask 2.2',
+    confidence: 0.8,
+    description: 'Importing jsonify from flask.json is deprecated. Import directly from flask.',
+  },
+  // Django
+  {
+    pattern: /\bfrom\s+django\.conf\.urls\s+import\s+url\b/,
+    replacement: 'from django.urls import re_path or path',
+    since: 'Django 4.0',
+    confidence: 0.95,
+    description: 'django.conf.urls.url() is removed in Django 4.0. Use path() or re_path() from django.urls.',
+  },
+  {
+    pattern: /\bfrom\s+django\.utils\.encoding\s+import\s+(?:force_text|smart_text)\b/,
+    replacement: 'force_str / smart_str',
+    since: 'Django 4.0',
+    confidence: 0.95,
+    description: 'force_text and smart_text are removed in Django 4.0. Use force_str and smart_str.',
+  },
+  {
+    pattern: /\bfrom\s+django\.utils\.translation\s+import\s+ugettext\b/,
+    replacement: 'from django.utils.translation import gettext',
+    since: 'Django 4.0',
+    confidence: 0.95,
+    description: 'ugettext is removed in Django 4.0. Use gettext (the u prefix was for Python 2 compat).',
+  },
+  {
+    pattern: /\bdefault_app_config\b/,
+    replacement: 'Remove (auto-discovery in Django 3.2+)',
+    since: 'Django 3.2',
+    confidence: 0.8,
+    description: 'default_app_config is deprecated in Django 3.2. Apps are auto-discovered via AppConfig.',
+  },
+  // Requests
+  {
+    pattern: /\brequests\.packages\.urllib3\b/,
+    replacement: 'import urllib3 directly',
+    since: 'requests 2.16',
+    confidence: 0.9,
+    description: 'Accessing urllib3 through requests.packages is deprecated. Import urllib3 directly.',
+  },
+  // SQLAlchemy
+  {
+    pattern: /\bfrom\s+sqlalchemy\s+import\s+.*?\bengine_from_config\b/,
+    replacement: 'create_engine()',
+    since: 'SQLAlchemy 2.0',
+    confidence: 0.85,
+    description: 'engine_from_config is deprecated in SQLAlchemy 2.0. Use create_engine() with configuration.',
+  },
+  {
+    pattern: /\bQuery\.get\b/,
+    replacement: 'Session.get()',
+    since: 'SQLAlchemy 2.0',
+    confidence: 0.85,
+    description: 'Query.get() is removed in SQLAlchemy 2.0. Use Session.get() instead.',
+  },
+];
+
+// ── Go third-party library deprecated APIs ─────────────────────────
+
+const GO_THIRDPARTY_DEPRECATIONS: DeprecatedPattern[] = [
+  // Gin
+  {
+    pattern: /\bgin\.Default\(\)\.Use\(gin\.Logger\(\)\)/,
+    replacement: 'gin.Default() (already includes Logger middleware)',
+    since: 'Gin 1.0',
+    confidence: 0.8,
+    description: 'gin.Default() already includes Logger and Recovery middleware. Adding Logger again is redundant.',
+  },
+  {
+    pattern: /\bc\.JSON\s*\(\s*200\s*,/,
+    replacement: 'c.JSON(http.StatusOK, ...)',
+    since: 'Go best practice',
+    confidence: 0.4,
+    description: 'Use http.StatusOK constant instead of magic number 200 for clarity.',
+  },
+  // GORM
+  {
+    pattern: /\bgorm\.Open\b/,
+    replacement: 'gorm.Open() replaced by driver-specific open in GORM v2',
+    since: 'GORM v2',
+    confidence: 0.85,
+    description: 'gorm.Open() is removed in GORM v2. Use gorm.Open(driver.Open(dsn)) with a specific driver.',
+  },
+  {
+    pattern: /\.RecordNotFound\b/,
+    replacement: 'errors.Is(err, gorm.ErrRecordNotFound)',
+    since: 'GORM v2',
+    confidence: 0.85,
+    description: '.RecordNotFound() is removed in GORM v2. Use errors.Is(err, gorm.ErrRecordNotFound).',
+  },
+];
+
+// ── Java third-party library deprecated APIs ───────────────────────
+
+const JAVA_THIRDPARTY_DEPRECATIONS: DeprecatedPattern[] = [
+  // Spring Boot
+  {
+    pattern: /\bWebSecurityConfigurerAdapter\b/,
+    replacement: 'SecurityFilterChain @Bean',
+    since: 'Spring Security 5.7',
+    confidence: 0.95,
+    description: 'WebSecurityConfigurerAdapter is deprecated in Spring Security 5.7. Use SecurityFilterChain @Bean.',
+  },
+  {
+    pattern: /\bauthorizeRequests\b/,
+    replacement: 'authorizeHttpRequests()',
+    since: 'Spring Security 5.6',
+    confidence: 0.8,
+    description: 'authorizeRequests() is deprecated. Use authorizeHttpRequests() in Spring Security 5.6+.',
+  },
+  {
+    pattern: /\bantMatchers\b/,
+    replacement: 'requestMatchers()',
+    since: 'Spring Security 6.0',
+    confidence: 0.85,
+    description: 'antMatchers() is removed in Spring Security 6.0. Use requestMatchers() instead.',
+  },
+  {
+    pattern: /\bmvcMatchers\b/,
+    replacement: 'requestMatchers()',
+    since: 'Spring Security 6.0',
+    confidence: 0.85,
+    description: 'mvcMatchers() is removed in Spring Security 6.0. Use requestMatchers() instead.',
+  },
+  // JUnit
+  {
+    pattern: /\bimport\s+org\.junit\.Test\b/,
+    replacement: 'import org.junit.jupiter.api.Test (JUnit 5)',
+    since: 'JUnit 5',
+    confidence: 0.8,
+    description: 'JUnit 4 @Test annotation. Consider migrating to JUnit 5 (org.junit.jupiter.api.Test).',
+  },
+  {
+    pattern: /\b\@RunWith\s*\(\s*SpringRunner\.class\s*\)/,
+    replacement: '@ExtendWith(SpringExtension.class) or @SpringBootTest',
+    since: 'Spring Boot 2.1 / JUnit 5',
+    confidence: 0.85,
+    description: '@RunWith(SpringRunner.class) is JUnit 4 style. Use @ExtendWith or @SpringBootTest with JUnit 5.',
+  },
+];
+
 // ─── Deprecation patterns map ──────────────────────────────────────
 
-/** Combined TypeScript/JavaScript patterns including Node.js + React + Vue + Angular. */
+/** Combined TypeScript/JavaScript patterns including Node.js + React + Vue + Angular + third-party libs. */
 const TS_JS_DEPRECATIONS: DeprecatedPattern[] = [
   ...TYPESCRIPT_DEPRECATIONS,
   ...REACT_DEPRECATIONS,
   ...VUE_DEPRECATIONS,
   ...ANGULAR_DEPRECATIONS,
+  ...EXPRESS_DEPRECATIONS,
+  ...NEXTJS_DEPRECATIONS,
+  ...PRISMA_DEPRECATIONS,
+  ...MONGOOSE_DEPRECATIONS,
+  ...WEBPACK_DEPRECATIONS,
+  ...JEST_DEPRECATIONS,
+  ...NESTJS_DEPRECATIONS,
+  ...TYPEORM_DEPRECATIONS,
 ];
 
 const DEPRECATION_PATTERNS: Map<SupportedLanguage, DeprecatedPattern[]> = new Map([
   ['typescript', TS_JS_DEPRECATIONS],
   ['javascript', TS_JS_DEPRECATIONS],
-  ['python', PYTHON_DEPRECATIONS],
-  ['java', JAVA_DEPRECATIONS],
-  ['go', GO_DEPRECATIONS],
-  ['kotlin', KOTLIN_DEPRECATIONS],
+  ['python', [...PYTHON_DEPRECATIONS, ...PYTHON_THIRDPARTY_DEPRECATIONS]],
+  ['java', [...JAVA_DEPRECATIONS, ...JAVA_THIRDPARTY_DEPRECATIONS]],
+  ['go', [...GO_DEPRECATIONS, ...GO_THIRDPARTY_DEPRECATIONS]],
+  ['kotlin', [...KOTLIN_DEPRECATIONS, ...JAVA_THIRDPARTY_DEPRECATIONS]],
 ]);
 
 // ─── Deprecated import modules (package-level deprecation) ─────────

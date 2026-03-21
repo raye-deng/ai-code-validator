@@ -609,3 +609,209 @@ const exists = fs.existsSync("./file");
     expect(reactResults).toHaveLength(0);
   });
 });
+
+// ── Third-party Library Deprecated API Tests ───────────────────────
+
+describe('Express deprecated APIs', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect body-parser import when Express has it built-in', async () => {
+    const unit = makeFileUnit({
+      source: `const bodyParser = require('body-parser');\napp.use(bodyParser.json());`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const bodyParserResults = results.filter(r => r.message.includes('body-parser'));
+    expect(bodyParserResults.length).toBeGreaterThan(0);
+    expect(bodyParserResults[0].message).toContain('express.json()');
+  });
+
+  it('should detect deprecated res.sendfile (lowercase f)', async () => {
+    const unit = makeFileUnit({
+      source: `app.get('/file', (req, res) => { res.sendfile('/path/to/file'); });`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const sendfileResults = results.filter(r => r.message.includes('sendfile'));
+    expect(sendfileResults.length).toBeGreaterThan(0);
+    expect(sendfileResults[0].message).toContain('sendFile');
+  });
+});
+
+describe('Next.js deprecated APIs', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect next/router import (Pages Router)', async () => {
+    const unit = makeFileUnit({
+      source: `import { useRouter } from 'next/router';`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const routerResults = results.filter(r => r.message.includes('next/router'));
+    expect(routerResults.length).toBeGreaterThan(0);
+    expect(routerResults[0].message).toContain('next/navigation');
+  });
+
+  it('should detect next/head import', async () => {
+    const unit = makeFileUnit({
+      source: `import Head from 'next/head';`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const headResults = results.filter(r => r.message.includes('next/head'));
+    expect(headResults.length).toBeGreaterThan(0);
+    expect(headResults[0].message).toContain('Metadata API');
+  });
+
+  it('should detect getInitialProps usage', async () => {
+    const unit = makeFileUnit({
+      source: `Page.getInitialProps = async (ctx) => { return {}; };`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const gipResults = results.filter(r => r.message.includes('getInitialProps'));
+    expect(gipResults.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Mongoose deprecated APIs', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect useNewUrlParser option', async () => {
+    const unit = makeFileUnit({
+      source: `mongoose.connect('mongodb://localhost/test', { useNewUrlParser: true });`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const mongoResults = results.filter(r => r.message.includes('useNewUrlParser'));
+    expect(mongoResults.length).toBeGreaterThan(0);
+  });
+
+  it('should detect useUnifiedTopology option', async () => {
+    const unit = makeFileUnit({
+      source: `mongoose.connect(uri, { useUnifiedTopology: true, useNewUrlParser: true });`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const topoResults = results.filter(r => r.message.includes('useUnifiedTopology'));
+    expect(topoResults.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Prisma deprecated APIs', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect rejectOnNotFound option', async () => {
+    const unit = makeFileUnit({
+      source: `const user = await prisma.user.findUnique({ where: { id: 1 }, rejectOnNotFound: true });`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const prismaResults = results.filter(r => r.message.includes('rejectOnNotFound'));
+    expect(prismaResults.length).toBeGreaterThan(0);
+    expect(prismaResults[0].message).toContain('findUniqueOrThrow');
+  });
+});
+
+describe('Webpack deprecated APIs', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect CommonsChunkPlugin usage', async () => {
+    const unit = makeFileUnit({
+      source: `new webpack.optimize.CommonsChunkPlugin({ name: 'vendor' });`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const webpackResults = results.filter(r => r.message.includes('CommonsChunkPlugin'));
+    expect(webpackResults.length).toBeGreaterThan(0);
+    expect(webpackResults[0].message).toContain('splitChunks');
+  });
+
+  it('should detect module.loaders usage', async () => {
+    const unit = makeFileUnit({
+      source: `module.exports = { module: { module.loaders: [{ test: /\\.js$/ }] } };`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const loadersResults = results.filter(r => r.message.includes('module.loaders'));
+    expect(loadersResults.length).toBeGreaterThan(0);
+    expect(loadersResults[0].message).toContain('module.rules');
+  });
+});
+
+describe('TypeORM deprecated APIs', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect getConnection usage', async () => {
+    const unit = makeFileUnit({
+      source: `const conn = getConnection();`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const typeormResults = results.filter(r => r.message.includes('getConnection'));
+    expect(typeormResults.length).toBeGreaterThan(0);
+    expect(typeormResults[0].message).toContain('DataSource');
+  });
+
+  it('should detect createConnection usage', async () => {
+    const unit = makeFileUnit({
+      source: `const connection = await createConnection({ type: 'postgres' });`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const connResults = results.filter(r => r.message.includes('createConnection'));
+    expect(connResults.length).toBeGreaterThan(0);
+    expect(connResults[0].message).toContain('DataSource');
+  });
+});
+
+describe('Django deprecated APIs (Python)', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect django.conf.urls.url import', async () => {
+    const unit = makeFileUnit({
+      file: 'urls.py',
+      language: 'python',
+      source: `from django.conf.urls import url\nurlpatterns = [url(r'^admin/', admin.site.urls)]`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const djangoResults = results.filter(r => r.message.includes('django.conf.urls.url'));
+    expect(djangoResults.length).toBeGreaterThan(0);
+    expect(djangoResults[0].message).toContain('re_path');
+  });
+
+  it('should detect force_text import', async () => {
+    const unit = makeFileUnit({
+      file: 'utils.py',
+      language: 'python',
+      source: `from django.utils.encoding import force_text`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const forceTextResults = results.filter(r => r.message.includes('force_text'));
+    expect(forceTextResults.length).toBeGreaterThan(0);
+    expect(forceTextResults[0].message).toContain('force_str');
+  });
+});
+
+describe('Spring Security deprecated APIs (Java)', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect WebSecurityConfigurerAdapter', async () => {
+    const unit = makeFileUnit({
+      file: 'SecurityConfig.java',
+      language: 'java',
+      source: `public class SecurityConfig extends WebSecurityConfigurerAdapter {\n  @Override\n  protected void configure(HttpSecurity http) {}\n}`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const springResults = results.filter(r => r.message.includes('WebSecurityConfigurerAdapter'));
+    expect(springResults.length).toBeGreaterThan(0);
+    expect(springResults[0].message).toContain('SecurityFilterChain');
+  });
+
+  it('should detect antMatchers usage', async () => {
+    const unit = makeFileUnit({
+      file: 'SecurityConfig.java',
+      language: 'java',
+      source: `http.authorizeRequests().antMatchers("/api/**").authenticated();`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const antResults = results.filter(r => r.message.includes('antMatchers'));
+    expect(antResults.length).toBeGreaterThan(0);
+    expect(antResults[0].message).toContain('requestMatchers');
+  });
+});
+
+describe('GORM deprecated APIs (Go)', () => {
+  const detector = new StaleAPIDetector();
+  it('should detect RecordNotFound usage', async () => {
+    const unit = makeFileUnit({
+      file: 'repo.go',
+      language: 'go',
+      source: `if db.First(&user).RecordNotFound() {\n  return nil\n}`,
+    });
+    const results = await detector.detect([unit], createContext());
+    const gormResults = results.filter(r => r.message.includes('RecordNotFound'));
+    expect(gormResults.length).toBeGreaterThan(0);
+    expect(gormResults[0].message).toContain('ErrRecordNotFound');
+  });
+});
