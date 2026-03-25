@@ -12,6 +12,7 @@
  * - KotlinLanguageDetector: Kotlin-specific AI patterns (!! abuse)
  * - PythonLanguageDetector: Python-specific AI patterns (bare except, eval, mutable defaults)
  * - UnicodeInvisibleDetector: Invisible Unicode character detection (PUA, bidi, zero-width)
+ * - IncompleteImplementationDetector: AI-generated skeleton/placeholder code detection
  *
  * Traditional lint concerns (duplication, type safety) are excluded.
  *
@@ -39,6 +40,7 @@ export {
   PythonLanguageDetector,
 } from './language-specific.js';
 export { UnicodeInvisibleDetector } from './unicode-invisible.js';
+export { IncompleteImplementationDetector } from './incomplete-implementation.js';
 
 // ─── Factory ───────────────────────────────────────────────────────
 
@@ -55,6 +57,7 @@ import {
   PythonLanguageDetector,
 } from './language-specific.js';
 import { UnicodeInvisibleDetector } from './unicode-invisible.js';
+import { IncompleteImplementationDetector } from './incomplete-implementation.js';
 
 /**
  * Create all V4 detectors with default configuration.
@@ -73,5 +76,6 @@ export function createV4Detectors(): V4Detector[] {
     new KotlinLanguageDetector(),
     new PythonLanguageDetector(),
     new UnicodeInvisibleDetector(),
+    new IncompleteImplementationDetector(),
   ];
 }
