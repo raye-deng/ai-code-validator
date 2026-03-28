@@ -608,7 +608,7 @@ function handleRequest(req: Request) {
     // Test detection of ghp_ prefix + 36 alphanum chars (fake value)
     const unit = makeUnit('const token = "ghp_000000000000000000000000000000000000";');
     const results = await detector.detect([unit], createContext());
-    const ghResult = results.find(r => r.metadata?.patternId === 'example-github-pat');
+    const ghResult = results.find(r => r.metadata?.patternId === 'github-pat-general');
     expect(ghResult).toBeDefined();
   });
 

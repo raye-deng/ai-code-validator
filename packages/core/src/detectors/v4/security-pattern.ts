@@ -213,6 +213,15 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
   // and represent AI-specific security risks that traditional tools miss.
 
   {
+    id: 'example-api-key',
+    pattern: /sk-(?:proj-|svcacct-)[a-zA-Z0-9]+-[a-zA-Z0-9]*example[a-zA-Z0-9]*/i,
+    severity: 'error',
+    confidence: 0.95,
+    message: 'Possible example OpenAI API key detected. AI often copies documentation examples with placeholder values. Use environment variables instead.',
+    languages: [],
+    excludeContextPatterns: [/process\.env/i, /import\.meta\.env/i, /\bgetenv\b/i],
+  },
+  {
     id: 'example-openai-key',
     pattern: /sk-(?:proj-|svcacct-)[a-zA-Z0-9]{4,24}(-[a-zA-Z0-9]{4,24}){1,3}/,
     severity: 'error',
@@ -227,6 +236,14 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
     severity: 'warning',
     confidence: 0.7,
     message: 'Placeholder secret value detected. AI often copies example values from documentation. Replace with proper secret management.',
+    languages: [],
+  },
+  {
+    id: 'placeholder-secret-basic',
+    pattern: /(?:password|secret)\s*[:=]\s*['"][^'"]*(?:example|test|demo|sample)[^'"]*['"]/i,
+    severity: 'warning',
+    confidence: 0.8,
+    message: 'Placeholder secret detected. AI commonly uses obvious placeholder values like "example" or "test" for secrets. Use environment variables instead.',
     languages: [],
   },
   {
@@ -422,7 +439,7 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
 
   {
     id: 'example-stripe-key',
-    pattern: /\bsk_(?:test|live)_[a-zA-Z0-9]{20,}/,
+    pattern: /\b(?:pk|sk)_(?:test|live)_[a-zA-Z0-9]{20,}(?:example)?/i,
     severity: 'error',
     confidence: 0.9,
     message: 'Possible Stripe API key detected. AI often copies example keys from Stripe documentation. Use environment variables or a secrets manager.',
@@ -430,9 +447,17 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
   },
   {
     id: 'example-github-pat',
+    pattern: /\bghp_[a-zA-Z0-9]{4,}example\b/i,
+    severity: 'error',
+    confidence: 0.95,
+    message: 'Possible example GitHub Personal Access Token detected. AI often copies documentation examples with "example" suffix. Use environment variables instead.',
+    languages: [],
+  },
+  {
+    id: 'github-pat-general',
     pattern: /\bghp_[a-zA-Z0-9]{36}\b/,
     severity: 'error',
-    confidence: 0.9,
+    confidence: 0.8,
     message: 'Possible GitHub Personal Access Token detected. Verify this is not a real token and use environment variables.',
     languages: [],
   },
