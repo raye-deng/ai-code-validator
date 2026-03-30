@@ -769,4 +769,74 @@ except:
     const bindResult = results.find(r => r.metadata?.patternId === 'python-server-bind-all');
     expect(bindResult).toBeDefined();
   });
+
+  // ── Overly Loose Input Validation (AI-Specific) ──────────────
+
+  it('should detect .min(1) minimal validation pattern', async () => {
+    const unit = makeUnit('const schema = z.object({ name: z.string().min(1) });');
+    const results = await detector.detect([unit], createContext());
+    const minResult = results.find(r => r.metadata?.patternId === 'minimal-validation-length-only');
+    expect(minResult).toBeDefined();
+    expect(minResult!.severity).toBe('warning');
+    expect(minResult!.message).toContain('min(1)');
+  });
+
+  it('should detect .min(2) minimal validation pattern', async () => {
+    const unit = makeUnit('const schema = z.object({ name: z.string().min(2) });');
+    const results = await detector.detect([unit], createContext());
+    const minResult = results.find(r => r.metadata?.patternId === 'minimal-validation-length-only');
+    expect(minResult).toBeDefined();
+  });
+
+  it('should detect length > 0 validation pattern', async () => {
+    const unit = makeUnit('if (user.name.length > 0) { return true; }');
+    const results = await detector.detect([unit], createContext());
+    const lengthResult = results.find(r => r.metadata?.patternId === 'minimal-validation-length-only');
+    expect(lengthResult).toBeDefined();
+    expect(lengthResult!.severity).toBe('warning');
+  });
+
+  it('should not flag .min(1) when used with email format validation', async () => {
+    const unit = makeUnit('const schema = z.object({ email: z.string().email() });');
+    const results = await detector.detect([unit], createContext());
+    const minResult = results.find(r => r.metadata?.patternId === 'minimal-validation-length-only');
+    expect(minResult).toBeUndefined();
+  });
+
+  it('should not flag .min(1) when used with regex format validation', async () => {
+    const unit = makeUnit('const schema = z.object({ phone: z.string().regex(/^\\d{10}$/) });');
+    const results = await detector.detect([unit], createContext());
+    const minResult = results.find(r => r.metadata?.patternId === 'minimal-validation-length-only');
+    expect(minResult).toBeUndefined();
+  });
+
+  it('should detect zod minimal validation', async () => {
+    const unit = makeUnit('const schema = z.object({ username: z.string().min(1), password: z.string().min(1) });');
+    const results = await detector.detect([unit], createContext());
+    const zodResult = results.find(r => r.metadata?.patternId === 'z-minimal-validation');
+    expect(zodResult).toBeDefined();
+    expect(zodResult!.message).toContain('zod');
+  });
+
+  it('should not flag zod validation when format rules are present', async () => {
+    const unit = makeUnit('const schema = z.object({ email: z.string().email().min(1) });');
+    const results = await detector.detect([unit], createContext());
+    const zodResult = results.find(r => r.metadata?.patternId === 'z-minimal-validation');
+    expect(zodResult).toBeUndefined();
+  });
+
+  it('should detect Python minimal validation (len > 0)', async () => {
+    const unit = makeUnit('if len(user_input) > 0:\n    process(user_input)', 'python', 'app.py');
+    const results = await detector.detect([unit], createContext());
+    const pyResult = results.find(r => r.metadata?.patternId === 'python-minimal-validation');
+    expect(pyResult).toBeDefined();
+    expect(pyResult!.message).toContain('Python');
+  });
+
+  it('should not flag Python validation when Pydantic or proper validation is used', async () => {
+    const unit = makeUnit('class User(BaseModel):\n    email: EmailStr', 'python', 'models.py');
+    const results = await detector.detect([unit], createContext());
+    const pyResult = results.find(r => r.metadata?.patternId === 'python-minimal-validation');
+    expect(pyResult).toBeUndefined();
+  });
 });

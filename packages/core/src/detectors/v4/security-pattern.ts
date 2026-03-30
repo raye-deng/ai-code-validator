@@ -577,7 +577,42 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
     languages: ['python'],
   },
 
-  // ── Go-specific Security Patterns ──────────────────────────────
+  // ── AI-Overly Loose Input Validation Patterns ─────────────────────
+  // AI commonly generates minimal validation that passes basic checks
+  // but doesn't validate content quality, leading to security risks.
+
+  {
+    id: 'minimal-validation-length-only',
+    pattern: /(?:\.min\(1\)|\.min\(2\)|length\s*>\s*0|length\s*>=\s*1)/i,
+    severity: 'warning',
+    confidence: 0.6,
+    message: 'Minimal validation detected (checking only length > 0). AI often uses .min(1) for "required" fields but doesn\'t validate content quality, format, or business rules. Use meaningful validation instead.',
+    languages: [],
+    excludeContextPatterns: [
+      /email|@.*\.|\.email\(\)|format|regex|pattern/i,
+      /validate.*proper|properly.*validate|strict.*validate/i,
+    ],
+  },
+  {
+    id: 'z-minimal-validation',
+    pattern: /z\.(?:string|number|object)\s*\(\s*\)\s*\.\s*(?:min\(|max\(\)|length\()/i,
+    severity: 'warning',
+    confidence: 0.7,
+    message: 'Minimal validation with zod detected. AI often uses .min(1) for required validation but doesn\'t include format checks, business rules, or content validation. Use comprehensive validation schemas.',
+    languages: ['typescript'],
+    excludeContextPatterns: [/email|format|regex|@.*\.[a-z]+|[A-Z][a-z]+\.[a-z]+\.[a-z]+/i],
+  },
+  {
+    id: 'python-minimal-validation',
+    pattern: /(?:if\s+(?:len\(.*\)\s*>\s*0|.*\s*is\s*not\s*None)|assert\s+.*\s*>\s*0|if\s+.*\s*:\s*pass)/i,
+    severity: 'warning',
+    confidence: 0.6,
+    message: 'Minimal validation in Python detected. AI often checks only "is not None" or length > 0 without validating content, format, or business rules. Use proper validation libraries like Pydantic.',
+    languages: ['python'],
+    excludeContextPatterns: [/validate|check|verify|pydantic|email|@.*\.[a-z]+/i],
+  },
+
+  // ─── Go-specific Security Patterns ──────────────────────────────
 
   {
     id: 'go-command-injection',
