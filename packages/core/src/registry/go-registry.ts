@@ -154,12 +154,76 @@ export class GoProxyRegistry implements PackageRegistry {
 
   /**
    * Check if a Go module is deprecated.
-   * The Go module proxy doesn't directly expose deprecation info.
-   * Future: could check go.mod for "Deprecated:" comments.
+   *
+   * Go modules indicate deprecation via a "// Deprecated:" comment in go.mod:
+   * ```
+   * module github.com/example/pkg
+   *
+   * // Deprecated: Use github.com/example/pkg/v2 instead.
+   * ```
+   *
+   * Fetches the go.mod file from the Go module proxy and parses it.
+   * GET {proxy}/{module}/@v/go.mod
    */
-  async checkDeprecated(_packageName: string, _version?: string): Promise<DeprecationInfo | null> {
-    // Go module proxy does not provide deprecation info via API.
-    // Deprecation is indicated in go.mod with a "Deprecated:" comment.
-    return null;
+  async checkDeprecated(packageName: string, version?: string): Promise<DeprecationInfo | null> {
+    if (this.isStdlib(packageName)) return null;
+
+    try {
+      const cacheKey = `go:deprecation:${packageName}`;
+      const cached = await this.cache.get(cacheKey) as DeprecationInfo | null;
+      if (cached) return cached;
+
+      const encodedModule = this.encodeModulePath(packageName);
+      let url: string;
+
+      if (version) {
+        url = `${this.baseUrl}/${encodedModule}/@v/${version}.mod`;
+      } else {
+        url = `${this.baseUrl}/${encodedModule}/@v/go.mod`;
+      }
+
+      const headers: Record<string, string> = {};
+      if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: AbortSignal.timeout(this.timeout),
+      });
+
+      if (!response.ok) return null;
+
+      const goModContent = await response.text();
+
+      // Parse go.mod for "// Deprecated:" comments (Go toolchain convention)
+      const deprecationMatch = goModContent.match(/^\/\/\s*Deprecated:\s*(.+)$/m);
+      if (deprecationMatch) {
+        const message = deprecationMatch[1].trim();
+        const result: DeprecationInfo = {
+          deprecated: true,
+          message,
+        };
+        await this.cache.set(cacheKey, result, this.cacheTtl);
+        return result;
+      }
+
+      // Also check for "module ... // Deprecated:" format (single-line)
+      const inlineMatch = goModContent.match(/^module\s+\S+.*?\/\/\s*Deprecated:\s*(.+)$/m);
+      if (inlineMatch) {
+        const message = inlineMatch[1].trim();
+        const result: DeprecationInfo = {
+          deprecated: true,
+          message,
+        };
+        await this.cache.set(cacheKey, result, this.cacheTtl);
+        return result;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
   }
 }
